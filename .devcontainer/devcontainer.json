@@ -2,8 +2,8 @@
 	"name": "python-ismrmrd-server-devcon",
 
 	"build": {
-		"dockerfile": "../docker/Dockerfile",
-		"target":     "python-mrd-devcontainer",
+		"dockerfile": "../custom/custom.dockerfile",
+		"target":     "fire-python-custom-devcon",
 		"context":    "../",
 		"cacheFrom":  [
 			"docker.io/kspacekelvin/fire-python-devcon",

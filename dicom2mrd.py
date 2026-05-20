@@ -74,7 +74,7 @@ def CreateMrdHeader(dset):
         pass
 
     mrdHead.studyInformation.studyID                = getattr(dset, 'StudyID',                None)
-    mrdHead.studyInformation.accessionNumber        = getattr(dset, 'AccessionNumber',        None)
+    # mrdHead.studyInformation.accessionNumber        = getattr(dset, 'AccessionNumber',        None)
     # mrdHead.studyInformation.referringPhysicianName = getattr(dset, 'ReferringPhysicianName', None)
     mrdHead.studyInformation.studyDescription       = getattr(dset, 'StudyDescription',       None)
     mrdHead.studyInformation.studyInstanceUID       = getattr(dset, 'StudyInstanceUID',       None)
@@ -113,7 +113,7 @@ def CreateMrdHeader(dset):
     encSpace.matrixSize.x   = dset.Columns
     encSpace.matrixSize.y   = dset.Rows
     encSpace.matrixSize.z   = 1
-    encSpace.fieldOfView_mm = ismrmrd.xsd.fieldOfViewMm(*CalcFieldOfView(dset))
+    #encSpace.fieldOfView_mm = ismrmrd.xsd.fieldOfViewMm(*CalcFieldOfView(dset))
 
     enc.encodedSpace = encSpace
     enc.reconSpace   = encSpace
@@ -126,8 +126,8 @@ def CreateMrdHeader(dset):
             enc.parallelImaging.accelerationFactor.kspace_encoding_step_1 = 1
             enc.parallelImaging.accelerationFactor.kspace_encoding_step_2 = 1
         else:
-            enc.parallelImaging.accelerationFactor.kspace_encoding_step_1 = dset.SharedFunctionalGroupsSequence[0].MRModifierSequence[0].ParallelReductionFactorInPlane
-            enc.parallelImaging.accelerationFactor.kspace_encoding_step_2 = dset.SharedFunctionalGroupsSequence[0].MRModifierSequence[0].ParallelReductionFactorOutOfPlane
+            enc.parallelImaging.accelerationFactor.kspace_encoding_step_1 = int(dset.SharedFunctionalGroupsSequence[0].MRModifierSequence[0].ParallelReductionFactorInPlane)
+            enc.parallelImaging.accelerationFactor.kspace_encoding_step_2 = int(dset.SharedFunctionalGroupsSequence[0].MRModifierSequence[0].ParallelReductionFactorOutOfPlane)
     else:
         enc.parallelImaging.accelerationFactor.kspace_encoding_step_1 = 1
         enc.parallelImaging.accelerationFactor.kspace_encoding_step_2 = 1
@@ -138,7 +138,7 @@ def CreateMrdHeader(dset):
     if hasattr(dset, 'SharedFunctionalGroupsSequence'):
         mrdHead.sequenceParameters.TR            = float(dset.SharedFunctionalGroupsSequence[0].MRTimingAndRelatedParametersSequence[0].RepetitionTime)
         mrdHead.sequenceParameters.flipAngle_deg = float(dset.SharedFunctionalGroupsSequence[0].MRTimingAndRelatedParametersSequence[0].FlipAngle)
-        mrdHead.sequenceParameters.TE            =       dset.SharedFunctionalGroupsSequence[0].MREchoSequence[0].EffectiveEchoTime
+        # mrdHead.sequenceParameters.TE            =       dset.SharedFunctionalGroupsSequence[0].MREchoSequence[0].EffectiveEchoTime
     else:
         mrdHead.sequenceParameters.TR            = float(dset.RepetitionTime)
         mrdHead.sequenceParameters.flipAngle_deg = float(dset.FlipAngle)
@@ -323,7 +323,7 @@ def main(args):
                 except:
                     TriggerTime = None
 
-            tmpMrdImg.field_of_view            = CalcFieldOfView(tmpDset)
+            # tmpMrdImg.field_of_view            = CalcFieldOfView(tmpDset)
             tmpMrdImg.position                 = tuple(np.stack(ImagePositionPatient))
             tmpMrdImg.read_dir                 = tuple(np.stack(ImageOrientationPatient[0:3]))
             tmpMrdImg.phase_dir                = tuple(np.stack(ImageOrientationPatient[3:7]))
