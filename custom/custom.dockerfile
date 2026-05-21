@@ -6,15 +6,32 @@ FROM kspacekelvin/fire-python-devcon AS fire-python-custom-devcon
 RUN cd /opt/code && \
     git clone https://github.com/kspaceKelvin/python-ismrmrd-server.git
 
-# Install any additional package dependencies here
-RUN pip install scipy
+
+# Install the remaining Python package dependencies
+RUN pip install --no-cache-dir \
+    SimpleITK-SimpleElastix\
+    scipy==1.13.0 \
+    numpy==1.26.0 \
+    matplotlib==3.8.2 \
+    opencv-python-headless==4.10.0.84
 
 # ----- 2. Second stage to create a runtime container for deployment -----
 FROM fire-python-custom-devcon AS fire-python-custom-runtime
 
 # Copy in modules and other files as needed
-COPY filter.py    /opt/code/python-ismrmrd-server
-COPY filter.json  /opt/code/python-ismrmrd-server
+# COPY filter.py    /opt/code/python-ismrmrd-server
+# COPY filter.json  /opt/code/python-ismrmrd-server
+COPY Dynamic_Mode_Decomposition.py    /opt/code/python-ismrmrd-server
+COPY Fourier_Decomposition.py  /opt/code/python-ismrmrd-server
+COPY MAIN_VQMap.json /opt/code/python-ismrmrd-server
+COPY MAIN_VQMap.py /opt/code/python-ismrmrd-server
+COPY Plotting.py /opt/code/python-ismrmrd-server
+COPY Reading_and_Writing.py /opt/code/python-ismrmrd-server
+COPY Registration.py /opt/code/python-ismrmrd-server
+COPY Segmentation.py /opt/code/python-ismrmrd-server
+COPY VQMapping.py /opt/code/python-ismrmrd-server
+COPY registration_parameter_file.txt /opt/code/python-ismrmrd-server
+
 
 # Set the starting directory so that code can use relative paths
 WORKDIR /opt/code/python-ismrmrd-server
