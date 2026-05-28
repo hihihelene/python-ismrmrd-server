@@ -9,11 +9,11 @@ RUN cd /opt/code && \
 
 # Install the remaining Python package dependencies
 RUN pip install --no-cache-dir \
-    SimpleITK-SimpleElastix\
+    # SimpleITK-SimpleElastix\
     scipy==1.13.0 \
-    numpy==1.26.0 \
-    matplotlib==3.8.2 \
-    opencv-python-headless==4.10.0.84
+    # numpy==1.26.0 \
+    # matplotlib==3.8.2 \
+    # opencv-python-headless==4.10.0.84
 
 # ----- 2. Second stage to create a runtime container for deployment -----
 FROM fire-python-custom-devcon AS fire-python-custom-runtime

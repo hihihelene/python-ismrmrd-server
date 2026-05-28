@@ -28,7 +28,7 @@ from custom.VQMapping import VQMapping_func
 debugFolder = "/tmp/share/debug"
 
 def process(connection, config, mrdHeader):
-    logging.info("=== MAIN_VQMap.process() invoked (PID %d) ===", os.getpid())
+    logging.info("=== Test1.process() invoked (PID %d) ===", os.getpid())
     logging.info("Config: \n%s", config)
 
     # mrdHeader should be xml formatted MRD header, but may be a string
@@ -315,27 +315,27 @@ def process_image(imgGroup, connection, config, mrdHeader):
 
 
     # data_orig = data
-    # # Invert image contrast
-    # data = maxVal-data
-    # data = np.abs(data)
-    # print('Step 1:')
-    # print(data.shape)
+    # Invert image contrast
+    data = maxVal-data
+    data = np.abs(data)
+    print('Step 1:')
+    print(data.shape)
 
 
-    # data = np.mean(data, axis=4)
-    # print('Step 2:')
-    # print(data.shape)
-    # data = np.expand_dims(data, axis=4)
-    # print('Step 3:')
-    # print(data.shape)
+    data = np.mean(data, axis=4)
+    print('Step 2:')
+    print(data.shape)
+    data = np.expand_dims(data, axis=4)
+    print('Step 3:')
+    print(data.shape)
 
-    VQMaps = VQMapping_func(data, head)
-    print('VQMaps shape:', VQMaps.shape)
-    VQMaps = np.expand_dims(VQMaps, axis = 2)
-    np.save(debugFolder + "/" + "imgVQMaps.npy", VQMaps)
+    # VQMaps = VQMapping_func(data, head)
+    # print('VQMaps shape:', VQMaps.shape)
+    # VQMaps = np.expand_dims(VQMaps, axis = 2)
+    # np.save(debugFolder + "/" + "imgVQMaps.npy", VQMaps)
 
-    print('Checking shape VQMaps:', VQMaps.shape)
-    data = np.expand_dims(VQMaps, axis=3)
+    # print('Checking shape VQMaps:', VQMaps.shape)
+    # data = np.expand_dims(VQMaps, axis=3)
     # if mrdhelper.get_json_config_param(config, 'options') == 'rgb':
     #     print('RGB option')
     #     logging.info('Converting data into RGB')
