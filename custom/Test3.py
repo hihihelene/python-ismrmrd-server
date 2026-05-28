@@ -21,7 +21,6 @@ sys.path.insert(0, parentdir)
 import mrdhelper
 import constants
 from time import perf_counter
-from custom.VQMapping import VQMapping_func
 
 
 # Folder for debug output files
@@ -328,6 +327,29 @@ def process_image(imgGroup, connection, config, mrdHeader):
     data = np.expand_dims(data, axis=4)
     print('Step 3:')
     print(data.shape)
+
+    # Checking if optional modules may be imported
+    try:
+        import matplotlib
+        print('Matplotlib version:', matplotlib.__version__)
+    except ImportError:
+        logging.warning('Matplotlib is not available; skipping version check')
+
+    print('Numpy version:', np.__version__)
+
+    try:
+        import importlib
+        scipy = importlib.import_module('scipy')
+        print('Scipy version:', scipy.__version__)
+    except ImportError:
+        logging.warning('Scipy is not available; skipping version check')
+
+
+    try:
+        import cv2
+        print('OpenCV version:', cv2.__version__)
+    except ImportError:
+        logging.warning('OpenCV is not available; skipping version check')
 
     # VQMaps = VQMapping_func(data, head)
     # print('VQMaps shape:', VQMaps.shape)

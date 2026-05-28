@@ -11,7 +11,7 @@ import signal
 defaults = {
     'host':           '0.0.0.0',
     'port':           9002,
-    'defaultConfig':  'Test1',
+    'defaultConfig':  'Test3',
     'savedataFolder': '/tmp/share/saved_data'
 }
 
