@@ -351,6 +351,16 @@ def process_image(imgGroup, connection, config, mrdHeader):
     except ImportError:
         logging.warning('OpenCV is not available; skipping version check')
 
+
+    try:
+        import SimpleITK
+        print('SimpleITK version:', SimpleITK.__version__)
+        if hasattr(SimpleITK, 'ElastixImageFilter'):
+            print('SimpleElastix is available in SimpleITK')
+        else:
+            print('SimpleElastix is not available in SimpleITK')
+    except ImportError:
+        print('SimpleITK is not available; skipping version check')
     # VQMaps = VQMapping_func(data, head)
     # print('VQMaps shape:', VQMaps.shape)
     # VQMaps = np.expand_dims(VQMaps, axis = 2)

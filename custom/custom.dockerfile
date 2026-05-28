@@ -9,7 +9,7 @@ RUN cd /opt/code && \
 
 # Install the remaining Python package dependencies
 RUN pip install --no-cache-dir \
-    # SimpleITK-SimpleElastix\
+    SimpleITK-SimpleElastix\
     scipy==1.13.0 \
     numpy==1.26.0 \
     matplotlib==3.8.2 \
@@ -21,8 +21,8 @@ FROM fire-python-custom-devcon AS fire-python-custom-runtime
 # Copy in modules and other files as needed
 # COPY filter.py    /opt/code/python-ismrmrd-server
 # COPY filter.json  /opt/code/python-ismrmrd-server
-COPY Test3.py    /opt/code/python-ismrmrd-server
-COPY Test3.json  /opt/code/python-ismrmrd-server
+COPY Test4.py    /opt/code/python-ismrmrd-server
+COPY Test4.json  /opt/code/python-ismrmrd-server
 # COPY Dynamic_Mode_Decomposition.py    /opt/code/python-ismrmrd-server
 # COPY Fourier_Decomposition.py  /opt/code/python-ismrmrd-server
 # COPY MAIN_VQMap.json /opt/code/python-ismrmrd-server
