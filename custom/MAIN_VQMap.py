@@ -303,7 +303,7 @@ def process_image(imgGroup, connection, config, mrdHeader):
     else:
         # Determine max value (12 or 16 bit)
         BitsStored = 12
-        if (mrdhelper.get_userParameterLong_value(mrdHeader, "BitsStored") is not None):
+        if mrdHeader is not None and hasattr(mrdHeader, 'userParameters') and (mrdhelper.get_userParameterLong_value(mrdHeader, "BitsStored") is not None):
             BitsStored = mrdhelper.get_userParameterLong_value(mrdHeader, "BitsStored")
         maxVal = 2**BitsStored - 1
 

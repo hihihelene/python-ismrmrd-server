@@ -11,7 +11,7 @@
 (Size 256 256 272)
 (Spacing 1 1 1)
 (Transform "TranslationTransform")
-(TransformParameters -0.05769508997378751 -0.14351795548568583 2.0867523054961823)
+(TransformParameters -0.05769508997378743 -0.14351795548568586 2.086752305496182)
 (UseDirectionCosines "true")
 
 // ResampleInterpolator specific
