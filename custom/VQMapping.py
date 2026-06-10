@@ -12,47 +12,90 @@ import matplotlib.pyplot as plt
 import SimpleITK as sitk
 
 
-from .Dynamic_Mode_Decomposition import (
-    dynamic_mode_decomp,
-    mask_images,
-    mean_step_size,
-    process_DMD_modes,
-    create_rgb_overlay,
-)
+try:
+    from .Dynamic_Mode_Decomposition import (
+        dynamic_mode_decomp,
+        mask_images,
+        mean_step_size,
+        process_DMD_modes,
+        create_rgb_overlay,
+    )
 
-from .Fourier_Decomposition import (
-    fourier_decomp,
-    frequency_spectrum_plot,
-)
+    from .Fourier_Decomposition import (
+        fourier_decomp,
+        frequency_spectrum_plot,
+    )
 
-from .Reading_and_Writing import (
-    center_crop_last_dim,
-    get_dicom_acquisition_times,
-    read_images_from_folder,
-    array_to_sitk,
-    get_ismrmrd_acquisition_times,
-)
+    from .Reading_and_Writing import (
+        center_crop_last_dim,
+        get_dicom_acquisition_times,
+        read_images_from_folder,
+        array_to_sitk,
+        get_ismrmrd_acquisition_times,
+    )
 
-from .Registration import (
-    extract_2d_slice,
-    find_middle_intensity_slice,
-    image_series_registration,
-    omit_first_frames,
-)
+    from .Registration import (
+        extract_2d_slice,
+        find_middle_intensity_slice,
+        image_series_registration,
+        omit_first_frames,
+    )
 
-from .Segmentation import (
-    augment_mask,
-    connect_lungs_sitk,
-    extract_body_mask,
-    rough_lung_segmentation,
-    manual_segmentation,  
-)
+    from .Segmentation import (
+        augment_mask,
+        connect_lungs_sitk,
+        extract_body_mask,
+        rough_lung_segmentation,
+        manual_segmentation,  
+    )
 
-from .Plotting import (
-    plot_overlays,
-    plot_individual_modes,
-    plot_results,
-)
+    from .Plotting import (
+        plot_overlays,
+        plot_individual_modes,
+        plot_results,
+    )
+except ImportError:
+    from Dynamic_Mode_Decomposition import (
+        dynamic_mode_decomp,
+        mask_images,
+        mean_step_size,
+        process_DMD_modes,
+        create_rgb_overlay,
+    )
+
+    from Fourier_Decomposition import (
+        fourier_decomp,
+        frequency_spectrum_plot,
+    )
+
+    from Reading_and_Writing import (
+        center_crop_last_dim,
+        get_dicom_acquisition_times,
+        read_images_from_folder,
+        array_to_sitk,
+        get_ismrmrd_acquisition_times,
+    )
+
+    from Registration import (
+        extract_2d_slice,
+        find_middle_intensity_slice,
+        image_series_registration,
+        omit_first_frames,
+    )
+
+    from Segmentation import (
+        augment_mask,
+        connect_lungs_sitk,
+        extract_body_mask,
+        rough_lung_segmentation,
+        manual_segmentation,  
+    )
+
+    from Plotting import (
+        plot_overlays,
+        plot_individual_modes,
+        plot_results,
+    )
 
 def ensure_dir(path):
     if not path:

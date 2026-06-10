@@ -21,7 +21,11 @@ sys.path.insert(0, parentdir)
 import mrdhelper
 import constants
 from time import perf_counter
-from custom.VQMapping import VQMapping_func
+try:
+    from VQMapping import VQMapping_func
+    logging.info("Successfully imported VQMapping_func from VQMapping.py (no additional custom folder entered)")
+except ImportError:
+    from custom.VQMapping import VQMapping_func
 
 
 # Folder for debug output files
