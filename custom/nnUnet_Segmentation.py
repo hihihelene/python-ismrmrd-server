@@ -12,7 +12,7 @@ from typing import Optional, Sequence, Tuple, Union
 import numpy as np
 import SimpleITK as sitk
 
-DEFAULT_MODEL_FOLDER = Path(__file__).resolve().parent / "models" / "nnunet_model_v002"
+DEFAULT_MODEL_FOLDER = Path(__file__).resolve().parent / "models" / "nnunet_model_v001"
 DEFAULT_CHECKPOINT_NAME = "checkpoint_best.pth"
 
 
@@ -69,14 +69,13 @@ def select_largest_connected_components(segmentation: np.ndarray, k: int = 2) ->
     k_largest_components = k_largest_components.astype(bool)
     return k_largest_components
 
-def segment_nnunet(
+def nnUnet_segmentation(
     image: Union[np.ndarray, sitk.Image],
     model_folder: Optional[Union[str, Path]] = None,
     checkpoint_name: str = DEFAULT_CHECKPOINT_NAME,
     use_folds: Tuple[Union[int, str], ...] = (0,),
     device: str = "cpu",
     spacing: Optional[Sequence[float]] = None,
-    **kwargs,
 ) -> np.ndarray:
     """Run nnU-Net inference on a single image and return a binary mask.
 
