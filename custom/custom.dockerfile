@@ -10,10 +10,21 @@ RUN cd /opt/code && \
 # Install the remaining Python package dependencies
 RUN pip install --no-cache-dir \
     SimpleITK-SimpleElastix\
-    scipy==1.13.0 \
-    numpy==1.26.0 \
-    matplotlib==3.8.2 \
-    opencv-python-headless==4.10.0.84
+    scipy \
+    numpy \
+    matplotlib\
+    opencv-python-headless\
+    torch torchvision \
+    nnunetv2
+
+# RUN pip install --no-cache-dir \
+#     SimpleITK-SimpleElastix\
+#     scipy==1.13.0 \
+#     numpy==1.26.0 \
+#     matplotlib==3.8.2 \
+#     opencv-python-headless==4.10.0.84\
+#     torch torchvision \
+#     nnunetv2
 
 # ----- 2. Second stage to create a runtime container for deployment -----
 FROM fire-python-custom-devcon AS fire-python-custom-runtime
@@ -30,7 +41,9 @@ COPY Reading_and_Writing.py /opt/code/python-ismrmrd-server
 COPY Registration.py /opt/code/python-ismrmrd-server
 COPY Segmentation.py /opt/code/python-ismrmrd-server
 COPY VQMapping.py /opt/code/python-ismrmrd-server
+COPY nnUnet_Segmentation.py /opt/code/python-ismrmrd-server
 COPY registration_parameter_file.txt /opt/code/python-ismrmrd-server
+COPY models /opt/code/python-ismrmrd-server
 
 
 # Set the starting directory so that code can use relative paths

@@ -6,3 +6,4 @@
 *.tar
 *.zip
 data/
+models/

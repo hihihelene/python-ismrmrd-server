@@ -54,6 +54,8 @@ try:
         plot_individual_modes,
         plot_results,
     )
+    from .nnUnet_Segmentation import nnUnet_segmentation
+
 except ImportError:
     from Dynamic_Mode_Decomposition import (
         dynamic_mode_decomp,
@@ -96,6 +98,8 @@ except ImportError:
         plot_individual_modes,
         plot_results,
     )
+
+    from nnUnet_Segmentation import nnUnetsegmentation
 
 def ensure_dir(path):
     if not path:
@@ -146,14 +150,39 @@ def compute_masks_and_mean(vol2dt, segmentation_method):
 
     body_mask = extract_body_mask(mean2d_sitk, lowerThreshold=0.25, radius=10)
     _, lung_init = rough_lung_segmentation(mean2d_sitk, body_mask, lung_lower_factor=0.0, lung_upper_factor=0.43)
+    if segmentation_method == 'manual':
+        augmented_lung = manual_segmentation(
+            mean2d_np,
+            output_path=None,
+            brush_size=5
+        )
+        augmented_lung = sitk.GetImageFromArray(
+            augmented_lung.astype(np.uint8)
+        )
+        augmented_lung.CopyInformation(mean2d_sitk)
 
-    if segmentation_method =='manual':
-        augmented_lung = manual_segmentation(mean2d_np, output_path = None, brush_size = 5)
-        augmented_lung = sitk.GetImageFromArray(augmented_lung.astype(np.uint8))
-        
     elif segmentation_method == 'automatic':
-        augmented_lung = augment_mask(mean2d_sitk, lung_init, body_mask, neighborhood_radius=10, num_iterations='max')
+        augmented_lung = augment_mask(
+            mean2d_sitk,
+            lung_init,
+            body_mask,
+            neighborhood_radius=3,
+            num_iterations=15,
+            erosion_iters=5,
+        )
 
+    elif segmentation_method == 'nnUnet':
+        nnunet_mask = nnUnet_segmentation(mean2d_sitk)
+
+        augmented_lung = sitk.GetImageFromArray(
+            nnunet_mask.astype(np.uint8)
+        )
+        augmented_lung.CopyInformation(mean2d_sitk)
+
+    else:
+        raise ValueError(
+            f"Unsupported segmentation_method: {segmentation_method}"
+        )
     full_thorax_mask = connect_lungs_sitk(augmented_lung, closing_radius=(90, 90, 30))
 
     body_np = sitk.GetArrayFromImage(body_mask).astype(bool)
@@ -264,7 +293,7 @@ def run_dmd(arr3d, mask2d, time_step, output_path, phantom=False):
 #     plot_individual_modes(Phi=Phi, freq=freq, b=b, r=r, mask=mask2d, lambda_=lambda_, output_dir=os.path.join(paths['output_path'], 'mode_plots'))
 
 
-def VQMapping_online(data, head, base_dir=None, skip_first=8, segmentation_method='automatic', phantom=False):
+def VQMapping_online(data, head, base_dir=None, skip_first=8, segmentation_method='nnUnet', phantom=False):
     """Process data in OpenRecon-style format: inputs are 'data, head'.
 
     This mirrors the offline 'main()' pipeline but accepts an in-memory
@@ -339,7 +368,7 @@ def VQMapping_online(data, head, base_dir=None, skip_first=8, segmentation_metho
 
     return VQMaps
 
-def VQMapping_func(arg1, arg2=None, output_path=None, base_dir=None, skip_first=8, segmentation_method='automatic', phantom=False, OpenRecon=False):
+def VQMapping_func(arg1, arg2=None, output_path=None, base_dir=None, skip_first=8, segmentation_method='nnUnet', phantom=False, OpenRecon=False):
     """Dispatch wrapper: if 'OpenRecon==True', treat inputs as 'data, head'.
 
     Otherwise 'arg1' is treated as the offline 'series_indicator' and the
@@ -354,7 +383,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--series', '-s', default='20251202_age13years', help='Dataset series indicator') # tag for phantom: trufi_lung_VT600ml_Freq20
     parser.add_argument('--skip-first', type=int, default=8, help='Number of initial frames to omit')
-    parser.add_argument('--segmentation_method', type=str, default='automatic', choices=['manual', 'automatic'], help='Method used for Segmentation')
+    parser.add_argument('--segmentation_method', type=str, default='nnUnet', choices=['manual', 'automatic', 'nnUnet'], help='Method used for Segmentation')
     def str2bool(v):
         if isinstance(v, bool):
             return v
