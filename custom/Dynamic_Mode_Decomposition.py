@@ -217,7 +217,22 @@ def process_DMD_modes(Phi, freq, lambda_, b, r,
     #perf_DMD[perf_DMD > perfp] = perfp
     #perfMap      = perf_DMD / perfp
     perfMap = perf_DMD
-    
+    # Exclude the top 95th percentile of perfusion pixels from the ventilation map
+    try:
+        if mask is not None:
+            segmented_mask = np.asarray(mask, dtype=bool) & np.isfinite(perfMap) & (perfMap > 0)
+        else:
+            segmented_mask = np.isfinite(perfMap) & (perfMap > 0)
+
+        if np.any(segmented_mask):
+            perf_cutoff = float(np.nanpercentile(perfMap[segmented_mask], 95))
+            exclude_mask = segmented_mask & (perfMap >= perf_cutoff)
+            ventMap = np.array(ventMap, copy=True)
+            ventMap[exclude_mask] = 0
+    except Exception:
+        # if anything goes wrong, fall back to original ventMap
+        pass
+
     return dc_DMD, ventMap, perfMap
     
 def mask_images(mask_bool, dc_image, vent_image, perf_image, background_value=0):

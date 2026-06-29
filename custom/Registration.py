@@ -5,6 +5,8 @@ except ImportError:
 import SimpleITK as sitk
 import numpy as np
 import os
+from PIL import Image
+import matplotlib.pyplot as plt
 
 
 def find_middle_intensity_slice(series: sitk.Image) -> int:
@@ -56,10 +58,23 @@ def make_fixed_stack(fixed2d: sitk.Image, template3d: sitk.Image) -> sitk.Image:
     return sitk.Cast(stack, fixed2d.GetPixelID())
 
 
+def make_mask_stack(mask2d: sitk.Image, template3d: sitk.Image) -> sitk.Image:
+    """Repeat a 2D binary mask across the time axis and copy the template geometry."""
+    depth = template3d.GetSize()[2]
+    arr2d = sitk.GetArrayFromImage(mask2d).astype(np.uint8)
+    arr3d = np.repeat(arr2d[np.newaxis, ...], depth, axis=0)
+
+    stack = sitk.GetImageFromArray(arr3d)
+    stack.CopyInformation(template3d)
+    return sitk.Cast(stack, sitk.sitkUInt8)
+
+
 def estimate_stack_transform(
     moving_stack_3d: sitk.Image,
     fixed_stack_3d: sitk.Image,
     parameter_file_path: str,
+    fixed_mask_3d: sitk.Image | None = None,
+    moving_mask_3d: sitk.Image | None = None,
     # output_dir: str
 ):
     """
@@ -75,19 +90,25 @@ def estimate_stack_transform(
     elastix.SetFixedImage(fixed_stack_3d)
     elastix.SetMovingImage(moving_stack_3d)
 
+    if fixed_mask_3d is not None:
+        elastix.SetFixedMask(fixed_mask_3d)
+    if moving_mask_3d is not None:
+        elastix.SetMovingMask(moving_mask_3d)
+
     pm = sitk.ReadParameterFile(parameter_file_path)
 
     # ----- Inject ONLY data-dependent entries (keep all other params in the file) -----
     num_frames    = moving_stack_3d.GetSize()[2]
     stack_spacing = moving_stack_3d.GetSpacing()[2] if moving_stack_3d.GetDimension() == 3 else 1.0
+    stack_origin = moving_stack_3d.GetOrigin()[2] if moving_stack_3d.GetDimension() == 3 else 0.0
     if stack_spacing <= 0:
         stack_spacing = 1.0
 
     pm["NumberOfSubTransforms"] = [str(num_frames)]
     pm["StackSpacing"]          = [str(stack_spacing)]
-    pm["StackOrigin"]           = ["0.0"]
+    pm["StackOrigin"]           = [str(stack_origin)]
 
-    # elastix.SetParameterMap(pm)
+    elastix.SetParameterMap(pm)
     # elastix.SetOutputDirectory(output_dir)
 
     elastix.Execute()
@@ -131,7 +152,6 @@ def image_series_registration(
     moving_series: sitk.Image,
     fixed_image_2d: sitk.Image,
     parameter_file_path: str,
-    # output_dir: str
 ):
     """Groupwise, per-frame transforms via BSplineStackTransform."""
     # joint_dir = os.path.join(output_dir, "stack_elastix")
@@ -145,19 +165,27 @@ def image_series_registration(
     fixed_stack = make_fixed_stack(fixed2d=fixed_image_2d, template3d=moving_series)
 
     # One optimization -> per-slice (time) 2D B-splines
-    tpm = estimate_stack_transform(moving_series, fixed_stack, parameter_file_path)
+    tpm = estimate_stack_transform(
+        moving_series,
+        fixed_stack,
+        parameter_file_path
+    )
 
     # Apply once to the whole stack
     applied_stack = apply_stack_transform(moving_series, tpm, fixed_stack)
 
     return fixed_stack, moving_series, applied_stack
 
+
 def main():
     # Directory containing DICOM files
-    main_directory = 'Data_2025/children_measurements/Usable/20250729_age13years_2'
+    main_directory = 'C:\\Lung_Project\\Measurements\\CDH_Study\\20250729_age13_1'
 
-    output_directory = 'Results/13_year_old_20250729_2'
+    output_directory = 'Results_Registration'
+    comparison_directory = os.path.join(output_directory, 'comparison_with_and_without_mask')
     parameter_file = 'registration_parameter_file.txt'  # see file contents below
+    os.makedirs(output_directory, exist_ok=True)
+    os.makedirs(comparison_directory, exist_ok=True)
 
     # Read series (expects a 3D image: x,y, time)
     moving_series = read_images_from_folder(main_directory)
@@ -174,9 +202,12 @@ def main():
     fixed_image = extract_2d_slice(moving_series, int(fixed_image_index))
     print('shape of fixed image:',fixed_image.GetSize())
 
-    # Groupwise registration with per-frame transforms
-    image_series_registration(moving_series, fixed_image, parameter_file, output_directory)
-
+    # Groupwise registration without mask
+    fixed_stack_no_mask, moving_series_no_mask, applied_stack_no_mask = image_series_registration(
+        moving_series, fixed_image, parameter_file
+    )
+    print('shape of moving series (no mask):', moving_series_no_mask.GetSize())
 
 if __name__ == "__main__":
     main()
+

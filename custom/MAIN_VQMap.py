@@ -22,10 +22,10 @@ import mrdhelper
 import constants
 from time import perf_counter
 try:
-    from VQMapping import VQMapping_func
+    from VQMapping import VQMapping_online
     logging.info("Successfully imported VQMapping_func from VQMapping.py (no additional custom folder entered)")
 except ImportError:
-    from custom.VQMapping import VQMapping_func
+    from custom.VQMapping import VQMapping_online
 
 
 # Folder for debug output files
@@ -333,7 +333,7 @@ def process_image(imgGroup, connection, config, mrdHeader):
     # print('Step 3:')
     # print(data.shape)
 
-    VQMaps = VQMapping_func(data, head)
+    VQMaps = VQMapping_online(data, head)
     print('VQMaps shape:', VQMaps.shape)
     VQMaps = np.expand_dims(VQMaps, axis = 2)
     np.save(debugFolder + "/" + "imgVQMaps.npy", VQMaps)
