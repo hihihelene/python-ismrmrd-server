@@ -12,7 +12,7 @@ from typing import Optional, Sequence, Tuple, Union
 import numpy as np
 import SimpleITK as sitk
 
-DEFAULT_MODEL_FOLDER = Path(__file__).resolve().parent / "models" / "nnunet_model_v001"
+DEFAULT_MODEL_FOLDER = Path(__file__).resolve().parent / "models" / "nnunet_model_v002"
 DEFAULT_CHECKPOINT_NAME = "checkpoint_best.pth"
 
 

@@ -4,7 +4,7 @@
         "options": "RGB",
         "sendOriginal": "True",
         "segmentation_method": "automatic",
-        "spectral_method": "DMD",
+        "spectral_method": "FD",
         "phantom": false,
         "skip_first": 8
     }

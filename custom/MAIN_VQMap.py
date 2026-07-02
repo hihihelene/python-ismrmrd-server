@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import ismrmrd
 import ismrmrd.image
 import os
@@ -26,6 +28,18 @@ try:
     logging.info("Successfully imported VQMapping_func from VQMapping.py (no additional custom folder entered)")
 except ImportError:
     from custom.VQMapping import VQMapping_online
+
+
+# introducing data class to configure pipeline parameters
+@dataclass
+class PipelineConfig:
+    spectral_method: str = "FD"
+    segmentation_method: str = "automatic"
+    series_indicator: str = "OpenRecon"
+    skip_first: int = 8
+    phantom: bool = False
+    plotting: bool = False
+    output_path: str | None = None
 
 
 # Folder for debug output files
@@ -333,7 +347,24 @@ def process_image(imgGroup, connection, config, mrdHeader):
     # print('Step 3:')
     # print(data.shape)
 
-    VQMaps = VQMapping_online(data, head)
+    
+    # Setting PipelineConfig parameters from config
+    print('Checking if config is loaded correctly:')
+    # config = 'MAIN_VQMap'
+    print(mrdhelper.get_json_config_param(config, 'options'))
+    print(type(config))
+    PipelineConfig.spectral_method = mrdhelper.get_json_config_param(config, 'spectral_method')
+    PipelineConfig.segmentation_method = mrdhelper.get_json_config_param(config, 'segmentation_method')
+    PipelineConfig.skip_first = int(mrdhelper.get_json_config_param(config, 'skip_first'))
+
+    print('Checking PipelineConfig parameters:')
+    print(f'Spectral method: {PipelineConfig.spectral_method}')
+    print(f'Segmentation method: {PipelineConfig.segmentation_method}')
+    print(f'Phantom: {PipelineConfig.phantom}')
+    print(f'Skip first: {PipelineConfig.skip_first}')
+    print(f'Series indicator: {PipelineConfig.series_indicator}')
+    print(f'type of series indicator: {type(PipelineConfig.series_indicator)}')
+    VQMaps = VQMapping_online(data, head, None, PipelineConfig)
     print('VQMaps shape:', VQMaps.shape)
     VQMaps = np.expand_dims(VQMaps, axis = 2)
     np.save(debugFolder + "/" + "imgVQMaps.npy", VQMaps)

@@ -233,6 +233,9 @@ def process_DMD_modes(Phi, freq, lambda_, b, r,
         # if anything goes wrong, fall back to original ventMap
         pass
 
+    # casting maps to original shape
+
+
     return dc_DMD, ventMap, perfMap
     
 def mask_images(mask_bool, dc_image, vent_image, perf_image, background_value=0):

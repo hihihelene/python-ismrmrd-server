@@ -250,6 +250,11 @@ def plot_overlays(
 
     saved_vent_path, saved_perf_path = None, None
 
+    print('Checking image sizes:')
+    print(f'Phantom image: {phantom_image.shape}')
+    print(f'Ventilation map: {vent_overlay.shape}')
+    if perf_overlay is not None:
+        print(f'Perfusion map: {perf_overlay.shape}')
     # --- Ventilation overlay ---
     fig_v, ax_v = plt.subplots(1, 1, figsize=(6, 6))
     ax_v.imshow(phantom_image, cmap='gray', vmin=pvmin, vmax=pvmax)
@@ -381,6 +386,7 @@ def plot_segmentation(mean2d_np, augmented_np, segmentation_method, output_path,
     """ 
     Plot the mean 2D image with the segmentation overlay and save the figure.
     """
+
     plt.figure(figsize=(6, 6))
     plt.imshow(mean2d_np, cmap="gray")
     plt.contour(augmented_np, levels=[0.5], colors="r")

@@ -25,11 +25,10 @@ try:
     )
 
     from .Reading_and_Writing import (
-        center_crop_last_dim,
         get_dicom_acquisition_times,
         read_images_from_folder,
-        array_to_sitk,
-        get_ismrmrd_acquisition_times,
+        array_to_sitk, # this is necessary for OpenRecon 
+        get_ismrmrd_acquisition_times, # this is necessary for OpenRecon 
     )
 
     from .Registration import (
@@ -70,7 +69,6 @@ except ImportError:
     )
 
     from Reading_and_Writing import (
-        center_crop_last_dim,
         get_dicom_acquisition_times,
         read_images_from_folder,
         array_to_sitk,
@@ -111,7 +109,7 @@ SEGMENTATION_METHODS = {
 # introducing data class to configure pipeline parameters
 @dataclass
 class PipelineConfig:
-    spectral_method: str = "FD"
+    spectral_method: str = "DMD"
     segmentation_method: str = "automatic"
     series_indicator: str = "20251110_age17"
     skip_first: int = 8
@@ -197,7 +195,6 @@ def run_registration(parameter_file, moving_series, skip_first=8):
     fixed_stack, moving_series, applied_stack = image_series_registration(moving_series, fixed_image, parameter_file)
 
     img3d = applied_stack
-    # registered_volume = center_crop_last_dim(sitk.GetArrayFromImage(img3d))
     registered_volume = sitk.GetArrayFromImage(img3d)
 
     #compute mean for registered_volume
@@ -220,7 +217,7 @@ def compute_masks_and_mean(image_series_xyt, config):
 
     Returns:
         mean_image: 2D mean image (y, x)
-        mask2d: 2D binary mask (y, x)
+        lung_mask: 2D binary mask (y, x)
     """
 
     mean_image = np.mean(image_series_xyt, axis=2).astype(np.float32)
@@ -234,19 +231,18 @@ def compute_masks_and_mean(image_series_xyt, config):
     return mean_image, lung_mask 
 
 
-def run_fourier(image_series_xyt, mask2d, time_step, config):
+def run_fourier(image_series_xyt, lung_mask, time_step, config):
     # Run Fourier decomposition first so spectrum plotting can reuse detected peaks
     Im1, Im2, Im0, V1, V2, vent_freq, perf_freq, spectrum_freq, spectrum_amp = fourier_decomp(
-        image_series_xyt, dt=time_step, bw=mask2d, prominence=0.3, phantom=config.phantom
+        image_series_xyt, dt=time_step, bw=lung_mask, prominence=0.3, phantom=config.phantom
     )
 
-    masked_dc, vent_map, perf_map = mask_images(mask2d, Im0, Im1, Im2, background_value=0)
+    masked_dc, vent_map, perf_map = mask_images(lung_mask, Im0, Im1, Im2, background_value=0)
     return vent_map, perf_map, vent_freq, perf_freq, masked_dc, spectrum_freq, spectrum_amp
 
-def run_dmd(registered_volume, mask2d, time_step, config):
-
-    registered_volume = center_crop_last_dim(registered_volume)
-    mask2d = center_crop_last_dim(mask2d)
+def run_dmd(registered_volume, lung_mask, time_step, config):
+    # lung_mask = center_crop_last_dim(lung_mask)
+    # registered_volume = center_crop_last_dim(registered_volume)
     num_frames, height, width = registered_volume.shape
     flattened = registered_volume.reshape(num_frames, -1).T
 
@@ -254,12 +250,12 @@ def run_dmd(registered_volume, mask2d, time_step, config):
     DMD_PERF_RANGE = [1.2, 3.5]
 
     rank = 15
-    phi, omega, lambda_, b, freq, Xdmd, r = dynamic_mode_decomp(flattened, mask=mask2d, dt=time_step, r = rank)
+    phi, omega, lambda_, b, freq, Xdmd, r = dynamic_mode_decomp(flattened, mask=lung_mask, dt=time_step, r = rank)
 
     # When analyzing a phantom, skip perfusion detection by passing perfRange=None
     perfRange_arg = None if config.phantom else DMD_PERF_RANGE
-    sy, sx = mask2d.shape
-    dc_DMD, vent_map, perf_map = process_DMD_modes(phi, freq, lambda_, b, r, sx=sx, sy=sy, ventRange=DMD_VENT_RANGE, perfRange=perfRange_arg, mask=mask2d)
+    sy, sx = registered_volume.shape[1:]
+    dc_DMD, vent_map, perf_map = process_DMD_modes(phi, freq, lambda_, b, r, sx=sx, sy=sy, ventRange=DMD_VENT_RANGE, perfRange=perfRange_arg, mask=lung_mask)
 
     vent_idxs = np.where((freq > DMD_VENT_RANGE[0]) & (freq < DMD_VENT_RANGE[1]))[0]
     vent_freqs = np.sort(freq[vent_idxs])
@@ -319,7 +315,7 @@ def compute_ventilation_perfusion(
         vent_map, perf_map, vent_hz, perf_hz, masked_dc, spectrum_freq, spectrum_amp = run_fourier(
             image_series_xyt, lung_mask, time_step, config=config
         )
-    # # Dynamic Mode Decomposition
+    # Dynamic Mode Decomposition
     if config.spectral_method == 'DMD':
         masked_dc, vent_map, perf_map, vent_hz, perf_hz, phi, freq, b, r, lambda_ = run_dmd(
             registered_volume, lung_mask, time_step, config=config)
@@ -369,7 +365,7 @@ def main(config: PipelineConfig, base_dir=None):
             plot_frequency_spectrum_FD(result.spectrum_freq, result.spectrum_amp, result.vent_hz, result.perf_hz, output_path = paths['output_path'])
         elif config.spectral_method == 'DMD':
             plot_modes_DMD(result.freq, result.b, result.vent_hz, result.perf_hz, output_path = paths['output_path'])
-            image_size_x, image_size_y = result.vent_map.shape
+            image_size_y, image_size_x = result.mean_image.shape
             plot_individual_modes(result.phi, result.freq, result.lambda_, result.b, result.r, mask=result.lung_mask, sx=image_size_x, sy=image_size_y, output_path = paths['output_path'])
     
     # save results for potential further analysis
@@ -382,6 +378,8 @@ def VQMapping_online(data, head, base_dir=None, config: PipelineConfig = Pipelin
     This mirrors the offline 'main()' pipeline but accepts an in-memory
     image array and ISMRMRD header.
     """
+
+    
     paths = setup_paths(config.series_indicator, base_dir=base_dir)
 
     print('Converting input array to SimpleITK image series...')
@@ -415,13 +413,31 @@ def VQMapping_online(data, head, base_dir=None, config: PipelineConfig = Pipelin
     VQMaps = VQMaps.astype(np.uint16)
 
     return VQMaps
+    # transforming data for display on scanner console, scaling to 0-255 and converting to uint16
+
+    # setting scaling factor to 95th percentile to avoid outliers dominating the scaling
+    p = 0.95
+    VMap = result.vent_map / np.percentile(result.vent_map[result.lung_mask], p*100)
+    QMap = result.perf_map / np.percentile(result.perf_map[result.lung_mask], p*100)
+    VMap[VMap > 1] = 1  
+    QMap[QMap > 1] = 1
+
+    print('Checking shapes before stacking:', VMap.shape, QMap.shape)
+
+    VQMaps = np.stack((VMap, QMap), axis = -1)
+    VQMaps *= 255
+    print('VentilationChecking max and mean values', np.max(VMap), np.mean(VMap))
+    print('Perfusion Checking max and mean values', np.max(QMap), np.mean(QMap))
+    VQMaps = VQMaps.astype(np.uint16)
+
+    return VQMaps
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--series", default="20250916_age12")
+    parser.add_argument("--series", default="20260120_age18")
     parser.add_argument("--segmentation-method", default="nnunet")
-    parser.add_argument("--spectral-method", default="FD")
+    parser.add_argument("--spectral-method", default="DMD")
     parser.add_argument("--plotting", default=True)
     parser.add_argument("--phantom", default=False)
     args = parser.parse_args()
