@@ -9,7 +9,7 @@ import argparse
 import os
 import numpy as np
 import SimpleITK as sitk
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 
 try: 
@@ -305,13 +305,13 @@ def compute_ventilation_perfusion(
 
     # Segmentation
     mean_image, lung_mask = compute_masks_and_mean(image_series_xyt, config)
-    
     # Timing
     time_step = mean_step_size(time_array)
     print('Estimated time step (s):', time_step)
     
     # Fourier decomposition
     if config.spectral_method == 'FD':
+    
         vent_map, perf_map, vent_hz, perf_hz, masked_dc, spectrum_freq, spectrum_amp = run_fourier(
             image_series_xyt, lung_mask, time_step, config=config
         )
@@ -319,7 +319,6 @@ def compute_ventilation_perfusion(
     if config.spectral_method == 'DMD':
         masked_dc, vent_map, perf_map, vent_hz, perf_hz, phi, freq, b, r, lambda_ = run_dmd(
             registered_volume, lung_mask, time_step, config=config)
-
 
     return PipelineResult(
         moving_series=moving_series,
@@ -346,7 +345,7 @@ def main(config: PipelineConfig, base_dir=None):
 
     print('Reading moving series from', paths['input_path'])
     moving_series = read_images_from_folder(paths['input_path'])
-    
+
     print('Getting DICOM acquisition times...')
     time_array = get_dicom_acquisition_times(paths['input_path'])
     
@@ -369,7 +368,7 @@ def main(config: PipelineConfig, base_dir=None):
             plot_individual_modes(result.phi, result.freq, result.lambda_, result.b, result.r, mask=result.lung_mask, sx=image_size_x, sy=image_size_y, output_path = paths['output_path'])
     
     # save results for potential further analysis
-    # np.savez(os.path.join(r'C:\Lung_Project\PostProcessing\ventilation_and_perfusion_maps\ventilation_and_perfusion_maps\Results', series_indicator + '_results.npz'), **asdict(result))
+    # np.savez(os.path.join(r'C:\Lung_Project\PostProcessing\ventilation_and_perfusion_maps\ventilation_and_perfusion_maps\Results', config.series_indicator + '_results.npz'), **asdict(result))
 
 def VQMapping_online(data, head, base_dir=None, config: PipelineConfig = PipelineConfig()):
 
@@ -400,45 +399,36 @@ def VQMapping_online(data, head, base_dir=None, config: PipelineConfig = Pipelin
     # setting scaling factor to 95th percentile to avoid outliers dominating the scaling
     p = 0.95
     VMap = result.vent_map / np.percentile(result.vent_map[result.lung_mask], p*100)
-    QMap = result.perf_map / np.percentile(result.perf_map[result.lung_mask], p*100)
     VMap[VMap > 1] = 1  
-    QMap[QMap > 1] = 1
 
-    print('Checking shapes before stacking:', VMap.shape, QMap.shape)
+    if config.phantom:
+        print('Checking shapes before stacking:', VMap.shape)
 
-    VQMaps = np.stack((VMap, QMap), axis = -1)
-    VQMaps *= 255
-    print('VentilationChecking max and mean values', np.max(VMap), np.mean(VMap))
-    print('Perfusion Checking max and mean values', np.max(QMap), np.mean(QMap))
-    VQMaps = VQMaps.astype(np.uint16)
+        VQMaps = np.expand_dims(VMap, axis=-1)
+        VQMaps *= 255
+        print('VentilationChecking max and mean values', np.max(VMap), np.mean(VMap))
+        VQMaps = VQMaps.astype(np.uint16)
+    elif config.phantom:
+        QMap = result.perf_map / np.percentile(result.perf_map[result.lung_mask], p*100)
+        QMap[QMap > 1] = 1
 
-    return VQMaps
-    # transforming data for display on scanner console, scaling to 0-255 and converting to uint16
+        print('Checking shapes before stacking:', VMap.shape, QMap.shape)
 
-    # setting scaling factor to 95th percentile to avoid outliers dominating the scaling
-    p = 0.95
-    VMap = result.vent_map / np.percentile(result.vent_map[result.lung_mask], p*100)
-    QMap = result.perf_map / np.percentile(result.perf_map[result.lung_mask], p*100)
-    VMap[VMap > 1] = 1  
-    QMap[QMap > 1] = 1
-
-    print('Checking shapes before stacking:', VMap.shape, QMap.shape)
-
-    VQMaps = np.stack((VMap, QMap), axis = -1)
-    VQMaps *= 255
-    print('VentilationChecking max and mean values', np.max(VMap), np.mean(VMap))
-    print('Perfusion Checking max and mean values', np.max(QMap), np.mean(QMap))
-    VQMaps = VQMaps.astype(np.uint16)
+        VQMaps = np.stack((VMap, QMap), axis = -1)
+        VQMaps *= 255
+        print('VentilationChecking max and mean values', np.max(VMap), np.mean(VMap))
+        print('Perfusion Checking max and mean values', np.max(QMap), np.mean(QMap))
+        VQMaps = VQMaps.astype(np.uint16)
 
     return VQMaps
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--series", default="20260120_age18")
+    parser.add_argument("--series", default="20260217_age10_2")
     parser.add_argument("--segmentation-method", default="nnunet")
-    parser.add_argument("--spectral-method", default="DMD")
-    parser.add_argument("--plotting", default=True)
+    parser.add_argument("--spectral-method", default="FD")
+    parser.add_argument("--plotting", default=False)
     parser.add_argument("--phantom", default=False)
     args = parser.parse_args()
     config = PipelineConfig(

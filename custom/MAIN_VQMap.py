@@ -355,8 +355,24 @@ def process_image(imgGroup, connection, config, mrdHeader):
     PipelineConfig.spectral_method = mrdhelper.get_json_config_param(config, 'spectralanalysis')
     PipelineConfig.segmentation_method = mrdhelper.get_json_config_param(config, 'segmentationmethod')
     PipelineConfig.skip_first = int(mrdhelper.get_json_config_param(config, 'skipfirst'))
-    PipelineConfig.phantom = bool(mrdhelper.get_json_config_param(config, 'phantom'))
 
+    # checking if phantom option type is boolean, if not, convert it to boolean
+    if isinstance(mrdhelper.get_json_config_param(config, 'phantom'), bool):
+        logging.info("Phantom option is boolean: %s", mrdhelper.get_json_config_param(config, 'phantom'))
+        PipelineConfig.phantom = mrdhelper.get_json_config_param(config, 'phantom')
+    elif isinstance(mrdhelper.get_json_config_param(config, 'phantom'), str):
+        logging.info("Phantom option is string: %s", mrdhelper.get_json_config_param(config, 'phantom'))
+        if mrdhelper.get_json_config_param(config, 'phantom').lower() == 'true':
+            PipelineConfig.phantom = True
+        elif mrdhelper.get_json_config_param(config, 'phantom').lower() == 'false':
+            PipelineConfig.phantom = False
+    
+    # PipelineConfig.phantom = bool(mrdhelper.get_json_config_param(config, 'phantom'))
+
+    print('PipelineConfig Phantom:', PipelineConfig.phantom) # debug
+    print('JSON input Phantom:', mrdhelper.get_json_config_param(config, 'phantom')) # debug
+    print('Json Input type:', type(mrdhelper.get_json_config_param(config, 'phantom'))) # debug
+    
     VQMaps = VQMapping_online(data, head, None, PipelineConfig)
     print('VQMaps shape:', VQMaps.shape)
     VQMaps = np.expand_dims(VQMaps, axis = 2)

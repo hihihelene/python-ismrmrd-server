@@ -4,8 +4,8 @@
         "options": "RGB",
         "sendOriginal": "True",
         "segmentationmethod": "automatic",
-        "spectralanalysis": "DMD",
-        "phantom": false,
+        "spectralanalysis": "FD",
+        "phantom": true,
         "skipfirst": 8
     }
 }

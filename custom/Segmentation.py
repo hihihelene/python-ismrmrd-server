@@ -4,8 +4,11 @@ from typing import Tuple
 import cv2
 import matplotlib.pyplot as plt
 from scipy import ndimage
-# import napari
-# from skimage.filters import threshold_otsu
+try:
+    from skimage.filters import threshold_otsu
+    import napari
+except ImportError:
+    print("Warning: skimage and napari are not installed. 'Load' option for segmentation will fail.")
 import os
 # ---------------------------------------------------------
 # Utility helpers

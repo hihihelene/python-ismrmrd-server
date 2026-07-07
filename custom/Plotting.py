@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import os
 
-
 def plot_image(ax, data, cmap, title, vmin=None, vmax=None):
     ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax)
     ax.set_title(title)
