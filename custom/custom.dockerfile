@@ -44,7 +44,10 @@ COPY VQMapping.py /opt/code/python-ismrmrd-server
 COPY nnUnet_Segmentation.py /opt/code/python-ismrmrd-server
 COPY registration_parameter_file.txt /opt/code/python-ismrmrd-server
 COPY models /opt/code/python-ismrmrd-server
+<<<<<<< HEAD
 
+=======
+>>>>>>> 91ab5fde6daebbaa211cc2ba7b77a89d3450195a
 
 
 # Set the starting directory so that code can use relative paths

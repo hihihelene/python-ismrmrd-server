@@ -6,9 +6,13 @@
 *.tar
 *.zip
 data/
+<<<<<<< HEAD
 IterationInfo.0.R0.txt
 IterationInfo.0.R1.txt
 IterationInfo.0.R2.txt
 result.0.mhd
 result.0.raw
 custom/models/
+=======
+models/
+>>>>>>> 91ab5fde6daebbaa211cc2ba7b77a89d3450195a
