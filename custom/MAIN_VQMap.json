@@ -3,9 +3,9 @@
     "parameters": {
         "options": "RGB",
         "sendOriginal": "True",
-        "segmentation_method": "automatic",
-        "spectral_method": "DMD",
+        "segmentationmethod": "automatic",
+        "spectralanalysis": "DMD",
         "phantom": false,
-        "skip_first": 8
+        "skipfirst": 8
     }
 }

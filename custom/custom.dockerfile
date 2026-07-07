@@ -30,7 +30,9 @@ COPY Reading_and_Writing.py /opt/code/python-ismrmrd-server
 COPY Registration.py /opt/code/python-ismrmrd-server
 COPY Segmentation.py /opt/code/python-ismrmrd-server
 COPY VQMapping.py /opt/code/python-ismrmrd-server
+COPY nnUnet_Segmentation.py /opt/code/python-ismrmrd-server
 COPY registration_parameter_file.txt /opt/code/python-ismrmrd-server
+
 
 
 # Set the starting directory so that code can use relative paths

@@ -23,11 +23,14 @@ sys.path.insert(0, parentdir)
 import mrdhelper
 import constants
 from time import perf_counter
+
 try:
+    # this line currently fails on the scanner but should be entered and work theoretically
     from VQMapping import VQMapping_online
-    logging.info("Successfully imported VQMapping_func from VQMapping.py (no additional custom folder entered)")
+    logging.info("Successfully imported VQMapping_online from VQMapping.py (no additional custom folder entered)")
 except ImportError:
-    from custom.VQMapping import VQMapping_online
+    logging.info("Failed to import VQMapping_online from VQMapping.py (no additional custom folder entered), trying to import from custom folder")
+    from .VQMapping import VQMapping_online
 
 
 # introducing data class to configure pipeline parameters
@@ -349,21 +352,11 @@ def process_image(imgGroup, connection, config, mrdHeader):
 
     
     # Setting PipelineConfig parameters from config
-    print('Checking if config is loaded correctly:')
-    # config = 'MAIN_VQMap'
-    print(mrdhelper.get_json_config_param(config, 'options'))
-    print(type(config))
-    PipelineConfig.spectral_method = mrdhelper.get_json_config_param(config, 'spectral_method')
-    PipelineConfig.segmentation_method = mrdhelper.get_json_config_param(config, 'segmentation_method')
-    PipelineConfig.skip_first = int(mrdhelper.get_json_config_param(config, 'skip_first'))
+    PipelineConfig.spectral_method = mrdhelper.get_json_config_param(config, 'spectralanalysis')
+    PipelineConfig.segmentation_method = mrdhelper.get_json_config_param(config, 'segmentationmethod')
+    PipelineConfig.skip_first = int(mrdhelper.get_json_config_param(config, 'skipfirst'))
+    PipelineConfig.phantom = bool(mrdhelper.get_json_config_param(config, 'phantom'))
 
-    print('Checking PipelineConfig parameters:')
-    print(f'Spectral method: {PipelineConfig.spectral_method}')
-    print(f'Segmentation method: {PipelineConfig.segmentation_method}')
-    print(f'Phantom: {PipelineConfig.phantom}')
-    print(f'Skip first: {PipelineConfig.skip_first}')
-    print(f'Series indicator: {PipelineConfig.series_indicator}')
-    print(f'type of series indicator: {type(PipelineConfig.series_indicator)}')
     VQMaps = VQMapping_online(data, head, None, PipelineConfig)
     print('VQMaps shape:', VQMaps.shape)
     VQMaps = np.expand_dims(VQMaps, axis = 2)
