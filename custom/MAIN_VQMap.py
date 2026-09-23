@@ -366,13 +366,8 @@ def process_image(imgGroup, connection, config, mrdHeader):
             PipelineConfig.phantom = True
         elif mrdhelper.get_json_config_param(config, 'phantom').lower() == 'false':
             PipelineConfig.phantom = False
-    
-    # PipelineConfig.phantom = bool(mrdhelper.get_json_config_param(config, 'phantom'))
 
-    print('PipelineConfig Phantom:', PipelineConfig.phantom) # debug
-    print('JSON input Phantom:', mrdhelper.get_json_config_param(config, 'phantom')) # debug
-    print('Json Input type:', type(mrdhelper.get_json_config_param(config, 'phantom'))) # debug
-    
+            
     VQMaps = VQMapping_online(data, head, None, PipelineConfig)
     print('VQMaps shape:', VQMaps.shape)
     VQMaps = np.expand_dims(VQMaps, axis = 2)
