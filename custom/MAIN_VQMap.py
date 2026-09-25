@@ -26,11 +26,11 @@ from time import perf_counter
 
 try:
     # this line currently fails on the scanner but should be entered and work theoretically
-    from VQMapping import VQMapping_online
+    from VQMapping import vq_mapping_online
     logging.info("Successfully imported VQMapping_online from VQMapping.py (no additional custom folder entered)")
 except ImportError:
     logging.info("Failed to import VQMapping_online from VQMapping.py (no additional custom folder entered), trying to import from custom folder")
-    from .VQMapping import VQMapping_online
+    from .VQMapping import vq_mapping_online
 
 
 # introducing data class to configure pipeline parameters
@@ -355,9 +355,9 @@ def process_image(imgGroup, connection, config, mrdHeader):
     PipelineConfig.spectral_method = mrdhelper.get_json_config_param(config, 'spectralanalysis')
     PipelineConfig.segmentation_method = mrdhelper.get_json_config_param(config, 'segmentationmethod')
     PipelineConfig.skip_first = int(mrdhelper.get_json_config_param(config, 'skipfirst'))
-    PipelineConfig.phantom = bool(mrdhelper.get_json_config_param(config, 'phantom'))
+    PipelineConfig.phantom =mrdhelper.get_json_config_param(config, 'phantom', type='bool')
 
-    VQMaps = VQMapping_online(data, head, None, PipelineConfig)
+    VQMaps = vq_mapping_online(data, head, None, PipelineConfig)
     print('VQMaps shape:', VQMaps.shape)
     VQMaps = np.expand_dims(VQMaps, axis = 2)
     np.save(debugFolder + "/" + "imgVQMaps.npy", VQMaps)

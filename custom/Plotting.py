@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import os
-
+import imageio
+import itk
 
 def plot_image(ax, data, cmap, title, vmin=None, vmax=None):
     ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax)
@@ -55,7 +56,7 @@ def plot_results(image, dc_image, ventMap, perfMap,
 
     image_norm = normalize_image(image)
     dc_image_norm = normalize_image(dc_image)
-    ventMap_norm = normalize_image(ventMap, upper_percentile=99)
+    ventMap_norm = np.asarray(ventMap, dtype=float)
     perfMap_norm = normalize_image(perfMap, upper_percentile=99) if perfMap is not None else None
 
     # # Compute P95 only in segmented tissue and ignore background.
@@ -395,7 +396,7 @@ def plot_segmentation(mean2d_np, augmented_np, segmentation_method, output_path,
     plt.savefig(f"{output_path}/segmentation_{segmentation_method}_{series_indicator}.png", bbox_inches='tight')
 
 
-def plot_frequency_spectrum_FD(spectrum_freq, spectrum_amp, vent_hz, perf_hz, output_path=None):
+def plot_frequency_spectrum_FD(spectrum_freq, spectrum_power, vent_hz, perf_hz, output_path=None):
     # mark peaks
     # find the nearest frequency bins for markers
     def nearest_bin(f):
@@ -405,27 +406,27 @@ def plot_frequency_spectrum_FD(spectrum_freq, spectrum_amp, vent_hz, perf_hz, ou
     vbin = nearest_bin(vent_hz)
 
     plt.figure(figsize=(6, 4))
-    plt.plot(spectrum_freq, spectrum_amp, linewidth=2)
+    plt.plot(spectrum_freq, spectrum_power, linewidth=2)
     plt.xlabel('Frequency (Hz)', fontsize=12)
-    plt.ylabel('Amplitude', fontsize=12)
-    plt.title('Mean-signal spectrum')
-    plt.scatter([spectrum_freq[vbin]], [spectrum_amp[vbin]])
+    plt.ylabel('Power', fontsize=12)
+    plt.title('Mean-signal power spectrum')
+    plt.scatter([spectrum_freq[vbin]], [spectrum_power[vbin]])
     plt.axvline(spectrum_freq[vbin], linestyle='--', alpha=0.7)
-    plt.annotate(f'Vent {vent_hz:.2f} Hz', (spectrum_freq[vbin], spectrum_amp[vbin]),
+    plt.annotate(f'Vent {vent_hz:.2f} Hz', (spectrum_freq[vbin], spectrum_power[vbin]),
                 textcoords='offset points', xytext=(8, 8))
 
     # Plot perfusion marker only if available
     if perf_hz is not None:
         pbin = nearest_bin(perf_hz)
-        plt.scatter([spectrum_freq[pbin]], [spectrum_amp[pbin]])
+        plt.scatter([spectrum_freq[pbin]], [spectrum_power[pbin]])
         plt.axvline(spectrum_freq[pbin], linestyle='--', alpha=0.7)
-        plt.annotate(f'Perf {perf_hz:.2f} Hz', (spectrum_freq[pbin], spectrum_amp[pbin]),
+        plt.annotate(f'Perf {perf_hz:.2f} Hz', (spectrum_freq[pbin], spectrum_power[pbin]),
                     textcoords='offset points', xytext=(8, 8))
 
     plt.xlim(0, spectrum_freq.max())
     # Protect against zero-height y-limits which can produce a blank/empty-looking figure
-    if spectrum_amp.size and spectrum_amp.max() > 0:
-        ymax = spectrum_amp.max()
+    if spectrum_power.size and spectrum_power.max() > 0:
+        ymax = spectrum_power.max()
     else:
         ymax = 1.0
     plt.ylim(0, ymax * 1.1)
@@ -447,3 +448,35 @@ def plot_modes_DMD(freq, b, vent_hz, perf_hz, output_path=None):
     plt.ylabel('Amplitude', fontsize=12)
     plt.title('Mean-signal spectrum DMD')
     plt.savefig(os.path.join(output_path, 'dmd_modes.jpg'))
+
+
+def plot_registered_series(registered_series, output_path=None):
+    """
+    Plot the registered series for visual inspection as a GIF.
+
+    Parameters:
+    -----------
+    registered_series : itk.Image
+        The registered image series.
+    output_path : str, optional
+        Path to save the figure. If None, the figure will not be saved.
+
+    Returns:
+    --------
+    None
+    """
+
+
+    # Convert the registered series to a numpy array
+    registered_array = registered_series  # (z, y, x)
+    print(f"Registered series shape: {registered_array.shape}")
+    print(f"Registered series dtype: {registered_array.dtype}")
+
+    # Create a GIF from the registered series
+    gif_path = os.path.join(output_path, 'registered_series.gif') if output_path else None
+    with imageio.get_writer(gif_path, mode='I', duration=0.5) as writer:
+        for i in range(registered_array.shape[0]):
+            frame = registered_array[i, :, :]
+            writer.append_data((frame / np.max(frame) * 255).astype(np.uint8))
+
+    print(f"Registered series GIF saved at: {gif_path}")

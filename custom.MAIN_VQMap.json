@@ -5,7 +5,7 @@
         "sendOriginal": "True",
         "segmentationmethod": "nnunet",
         "spectralanalysis": "FD",
-        "phantom": true,
+        "phantom": false,
         "skipfirst": 8
     }
 }

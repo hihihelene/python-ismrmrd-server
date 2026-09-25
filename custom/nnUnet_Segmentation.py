@@ -10,13 +10,8 @@ from pathlib import Path
 from typing import Optional, Sequence, Tuple, Union
 
 import numpy as np
-import SimpleITK as sitk
 
-<<<<<<< HEAD
 DEFAULT_MODEL_FOLDER = Path(__file__).resolve().parent / "models" / "nnunet_model_v002"
-=======
-DEFAULT_MODEL_FOLDER = Path(__file__).resolve().parent / "models" / "nnunet_model_v001"
->>>>>>> 91ab5fde6daebbaa211cc2ba7b77a89d3450195a
 DEFAULT_CHECKPOINT_NAME = "checkpoint_best.pth"
 
 
@@ -28,11 +23,12 @@ def _resolve_model_folder(model_folder: Optional[Union[str, Path]]) -> Path:
 
 
 def _image_to_nnunet_input(
-    image: Union[np.ndarray, sitk.Image],
+    image: Union[np.ndarray, object],
     spacing: Optional[Sequence[float]] = None,
 ) -> Tuple[np.ndarray, dict]:
-    if isinstance(image, sitk.Image):
-        image_array = sitk.GetArrayFromImage(image).astype(np.float32)
+    if not isinstance(image, np.ndarray):
+        import itk
+        image_array = itk.array_from_image(image).astype(np.float32)
         if spacing is None:
             spacing = tuple(float(value) for value in image.GetSpacing()[::-1])
     else:
@@ -74,10 +70,10 @@ def select_largest_connected_components(segmentation: np.ndarray, k: int = 2) ->
     return k_largest_components
 
 def segment_nnunet(
-    image: Union[np.ndarray, sitk.Image],
+    image: Union[np.ndarray, object],
     model_folder: Optional[Union[str, Path]] = None,
     checkpoint_name: str = DEFAULT_CHECKPOINT_NAME,
-    use_folds: Tuple[Union[int, str], ...] = (0,),
+    use_folds: Tuple[Union[int, str], ...] = (0, 1, 2, 3, 4),
     device: str = "cpu",
     spacing: Optional[Sequence[float]] = None,
     **kwargs,

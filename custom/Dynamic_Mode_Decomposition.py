@@ -242,8 +242,16 @@ def mask_images(mask_bool, dc_image, vent_image, perf_image, background_value=0)
 
     # Create masked images with NaN for the mask
     masked_dc = np.where(mask_bool, dc_image, background_value)
-    masked_vent = np.where(mask_bool, vent_image, background_value)
-    masked_perf = np.where(mask_bool, perf_image, background_value)
+    masked_vent = (
+        None
+        if vent_image is None
+        else np.where(mask_bool, vent_image, background_value)
+    )
+    masked_perf = (
+        None
+        if perf_image is None
+        else np.where(mask_bool, perf_image, background_value)
+    )
 
     return masked_dc, masked_vent, masked_perf
 

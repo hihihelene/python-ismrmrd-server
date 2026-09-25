@@ -3,8 +3,8 @@
     "parameters": {
         "options": "RGB",
         "sendOriginal": "True",
-        "segmentationmethod": "automatic",
-        "spectralanalysis": "DMD",
+        "segmentationmethod": "nnUnet",
+        "spectralanalysis": "FD",
         "phantom": false,
         "skipfirst": 8
     }

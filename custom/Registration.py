@@ -1,80 +1,78 @@
+import os
 try:
     from .Reading_and_Writing import read_images_from_folder
 except ImportError:
     from Reading_and_Writing import read_images_from_folder
-import SimpleITK as sitk
+import itk
 import numpy as np
-import os
-from PIL import Image
-import matplotlib.pyplot as plt
 
 
-def find_middle_intensity_slice(series: sitk.Image) -> int:
+def _image_size(image):
+    return tuple(int(value) for value in image.GetLargestPossibleRegion().GetSize())
+
+
+def _copy_geometry(source, target):
+    target.SetSpacing(source.GetSpacing())
+    target.SetOrigin(source.GetOrigin())
+    target.SetDirection(source.GetDirection())
+    return target
+
+
+def find_middle_intensity_slice(series) -> int:
     """Choose the fixed frame as the slice with median total intensity."""
-    image_arrays = sitk.GetArrayFromImage(series)  # (z, y, x)
+    image_arrays = itk.array_from_image(series)  # (z, y, x)
     slice_intensities = [np.sum(image) for image in image_arrays]
     median_index = np.argsort(slice_intensities)[len(slice_intensities) // 2]
     return int(median_index)
 
-def omit_first_frames(series3d: sitk.Image, k: int) -> sitk.Image:
+def omit_first_frames(series3d, k: int):
     """Return series3d with the first k frames removed along axis 2."""
-    sz = list(series3d.GetSize())  # [x, y, z]
+    sz = list(_image_size(series3d))  # [x, y, z]
     k = max(0, min(int(k), sz[2]))
-    start = [0, 0, k]
-    size  = [sz[0], sz[1], sz[2] - k]
+    size = [sz[0], sz[1], sz[2] - k]
     if size[2] == 0:
         raise ValueError(f"omit_first_frames would produce empty stack (k={k}, depth={sz[2]}).")
-    ex = sitk.ExtractImageFilter()
-    ex.SetIndex(start)
-    ex.SetSize(size)
-    return ex.Execute(series3d)  # origin is updated automatically to the new start
+    result = itk.image_from_array(itk.array_from_image(series3d)[k:, :, :])
+    return _copy_geometry(series3d, result)
 
-def extract_2d_slice(volume3d: sitk.Image, slice_index: int) -> sitk.Image:
+def extract_2d_slice(volume3d, slice_index: int):
     """Extract a single 2D frame from a 3D (x,y,z/time) image."""
-    size = list(volume3d.GetSize())      # [x, y, z]
-    start = [0, 0, slice_index]
-    size[2] = 0
-    ex = sitk.ExtractImageFilter()
-    ex.SetSize(size)
-    ex.SetIndex(start)
-    ex.SetDirectionCollapseToStrategy(
-        sitk.ExtractImageFilter.DIRECTIONCOLLAPSETOIDENTITY
-    )
-    return ex.Execute(volume3d)
+    image = itk.image_from_array(itk.array_from_image(volume3d)[slice_index, :, :])
+    image.SetSpacing(tuple(volume3d.GetSpacing()[index] for index in range(2)))
+    image.SetOrigin(tuple(volume3d.GetOrigin()[index] for index in range(2)))
+    return image
 
-def make_fixed_stack(fixed2d: sitk.Image, template3d: sitk.Image) -> sitk.Image:
+def make_fixed_stack(fixed2d, template3d):
     """
     Tile a 2D fixed image across the 3rd axis, but copy full geometry from template3d
     so orientation (coronal/axial/sagittal), spacing, origin, and direction all match.
     """
-    depth = template3d.GetSize()[2]
+    depth = _image_size(template3d)[2]
 
     # 2D -> 3D numpy (z,y,x) by repeating along the stack axis (z)
-    arr2d = sitk.GetArrayFromImage(fixed2d)          # (y, x)
+    arr2d = itk.array_from_image(fixed2d)          # (y, x)
     arr3d = np.repeat(arr2d[np.newaxis, ...], depth, axis=0)  # (z, y, x)
 
-    stack = sitk.GetImageFromArray(arr3d)            # creates 3D image with identity geometry
-    stack.CopyInformation(template3d)                # now geometry matches the moving series exactly
-    return sitk.Cast(stack, fixed2d.GetPixelID())
+    stack = itk.image_from_array(arr3d)            # creates 3D image with identity geometry
+    return _copy_geometry(template3d, stack)
 
 
-def make_mask_stack(mask2d: sitk.Image, template3d: sitk.Image) -> sitk.Image:
+def make_mask_stack(mask2d, template3d):
     """Repeat a 2D binary mask across the time axis and copy the template geometry."""
-    depth = template3d.GetSize()[2]
-    arr2d = sitk.GetArrayFromImage(mask2d).astype(np.uint8)
+    depth = _image_size(template3d)[2]
+    arr2d = itk.array_from_image(mask2d).astype(np.uint8)
     arr3d = np.repeat(arr2d[np.newaxis, ...], depth, axis=0)
 
-    stack = sitk.GetImageFromArray(arr3d)
-    stack.CopyInformation(template3d)
-    return sitk.Cast(stack, sitk.sitkUInt8)
+    stack = itk.image_from_array(arr3d)
+    return _copy_geometry(template3d, stack)
 
 
 def estimate_stack_transform(
-    moving_stack_3d: sitk.Image,
-    fixed_stack_3d: sitk.Image,
+    moving_stack_3d,
+    fixed_stack_3d,
     parameter_file_path: str,
-    fixed_mask_3d: sitk.Image | None = None,
-    moving_mask_3d: sitk.Image | None = None,
+    fixed_mask_3d=None,
+    moving_mask_3d=None,
     # output_dir: str
 ):
     """
@@ -83,24 +81,15 @@ def estimate_stack_transform(
     """
     # os.makedirs(output_dir, exist_ok=True)
 
-    elastix = sitk.ElastixImageFilter()
-    elastix.LogToFileOff()
-    elastix.LogToConsoleOff()
-
-    elastix.SetFixedImage(fixed_stack_3d)
-    elastix.SetMovingImage(moving_stack_3d)
-
-    if fixed_mask_3d is not None:
-        elastix.SetFixedMask(fixed_mask_3d)
-    if moving_mask_3d is not None:
-        elastix.SetMovingMask(moving_mask_3d)
-
-    pm = sitk.ReadParameterFile(parameter_file_path)
+    parameter_object = itk.ParameterObject.New()
+    parameter_object.AddParameterFile(parameter_file_path)
+    pm = parameter_object.GetParameterMap(0)
 
     # ----- Inject ONLY data-dependent entries (keep all other params in the file) -----
-    num_frames    = moving_stack_3d.GetSize()[2]
-    stack_spacing = moving_stack_3d.GetSpacing()[2] if moving_stack_3d.GetDimension() == 3 else 1.0
-    stack_origin = moving_stack_3d.GetOrigin()[2] if moving_stack_3d.GetDimension() == 3 else 0.0
+    num_frames    = _image_size(moving_stack_3d)[2]
+    is_3d = len(_image_size(moving_stack_3d)) == 3
+    stack_spacing = moving_stack_3d.GetSpacing()[2] if is_3d else 1.0
+    stack_origin = moving_stack_3d.GetOrigin()[2] if is_3d else 0.0
     if stack_spacing <= 0:
         stack_spacing = 1.0
 
@@ -108,49 +97,43 @@ def estimate_stack_transform(
     pm["StackSpacing"]          = [str(stack_spacing)]
     pm["StackOrigin"]           = [str(stack_origin)]
 
-    elastix.SetParameterMap(pm)
-    # elastix.SetOutputDirectory(output_dir)
+    parameter_object.SetParameterMap(pm)
 
-    elastix.Execute()
+    elastix = itk.ElastixRegistrationMethod.New(
+        fixed_image=fixed_stack_3d,
+        moving_image=moving_stack_3d,
+        parameter_object=parameter_object,
+    )
+    if fixed_mask_3d is not None:
+        elastix.SetFixedMask(fixed_mask_3d)
+    if moving_mask_3d is not None:
+        elastix.SetMovingMask(moving_mask_3d)
+    elastix.SetLogToConsole(False)
+    elastix.Update()
 
-    # Persist the transform(s)
-    tpm = elastix.GetTransformParameterMap()
-    # if isinstance(tpm, sitk.ParameterMap):
-        # sitk.WriteParameterFile(tpm, os.path.join(output_dir, "TransformParameters.0.txt"))
-    # else:
-        # for i, pm_i in enumerate(tpm):
-            # sitk.WriteParameterFile(pm_i, os.path.join(output_dir, f"TransformParameters.{i}.txt"))
-
-    return tpm
+    return elastix.GetTransformParameterObject()
 
 
 def apply_stack_transform(
-    moving_stack_3d: sitk.Image,
+    moving_stack_3d,
     transform_parameter_map,
-    reference_stack_3d: sitk.Image,
+    reference_stack_3d,
     # output_dir: str
 ):
     """Apply the stack transform once to the whole 3D time series and write outputs."""
-    output_dir = "temp"
-    os.makedirs(output_dir, exist_ok=True)
+    transformix = itk.TransformixFilter.New(
+        moving_image=moving_stack_3d,
+        transform_parameter_object=transform_parameter_map,
+    )
+    transformix.SetLogToConsole(False)
+    transformix.Update()
 
-    tfx = sitk.TransformixImageFilter()
-    tfx.LogToFileOff()
-    tfx.LogToConsoleOff()
-    tfx.SetTransformParameterMap(transform_parameter_map)
-    tfx.SetMovingImage(moving_stack_3d)
-    tfx.SetOutputDirectory(output_dir)
-    tfx.Execute()
-    
-    registered_stack = tfx.GetResultImage()
-    registered_stack.CopyInformation(reference_stack_3d)
-
-    return registered_stack
+    return _copy_geometry(reference_stack_3d, transformix.GetOutput())
 
 
 def image_series_registration(
-    moving_series: sitk.Image,
-    fixed_image_2d: sitk.Image,
+    moving_series,
+    fixed_image_2d,
     parameter_file_path: str,
 ):
     """Groupwise, per-frame transforms via BSplineStackTransform."""
@@ -159,7 +142,7 @@ def image_series_registration(
     # os.makedirs(joint_dir, exist_ok=True)
     
     # Change moving series orientation for VarianceOverLastDimensionMetric
-    moving_series.SetDirection((1, 0, 0, 0, 1, 0, 0, 0, 1))
+    moving_series.SetDirection(itk.matrix_from_array(np.eye(3)))
 
     # Build 3D fixed stack matching the 3D moving series
     fixed_stack = make_fixed_stack(fixed2d=fixed_image_2d, template3d=moving_series)
@@ -189,24 +172,24 @@ def main():
 
     # Read series (expects a 3D image: x,y, time)
     moving_series = read_images_from_folder(main_directory)
-    print('shape of moving series:',moving_series.GetSize())
+    print('shape of moving series:', _image_size(moving_series))
 
     SKIP_FIRST = 8   # set to any integer, e.g. 5–10
     if SKIP_FIRST > 0:
         moving_series = omit_first_frames(moving_series, SKIP_FIRST)
-        print(f'trimmed moving series (skipped {SKIP_FIRST}):', moving_series.GetSize())
+        print(f'trimmed moving series (skipped {SKIP_FIRST}):', _image_size(moving_series))
 
     # Pick fixed frame = median-intensity slice
     fixed_image_index = find_middle_intensity_slice(moving_series)
     print("Fixed image index:", fixed_image_index)
     fixed_image = extract_2d_slice(moving_series, int(fixed_image_index))
-    print('shape of fixed image:',fixed_image.GetSize())
+    print('shape of fixed image:', _image_size(fixed_image))
 
     # Groupwise registration without mask
     fixed_stack_no_mask, moving_series_no_mask, applied_stack_no_mask = image_series_registration(
         moving_series, fixed_image, parameter_file
     )
-    print('shape of moving series (no mask):', moving_series_no_mask.GetSize())
+    print('shape of moving series (no mask):', _image_size(moving_series_no_mask))
 
 if __name__ == "__main__":
     main()
