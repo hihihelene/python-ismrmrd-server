@@ -203,14 +203,14 @@ def normalize_map_for_output(map_data, lung_mask, upper_percentile=95):
         )
         return None
 
-    output = np.asarray(map_data, dtype=float)
+    output = np.asarray(map_data, dtype=np.float32)
     valid_mask = mask & np.isfinite(output)
     if not np.any(valid_mask):
-        return np.zeros(output.shape, dtype=float)
+        return np.zeros(output.shape, dtype=np.float32)
 
     scale = np.nanpercentile(output[valid_mask], upper_percentile)
     if not np.isfinite(scale) or scale <= 0:
-        return np.zeros(output.shape, dtype=float)
+        return np.zeros(output.shape, dtype=np.float32)
 
     output = np.divide(output, scale, out=np.zeros_like(output), where=np.isfinite(output))
     output[~np.isfinite(output)] = 0
@@ -348,6 +348,7 @@ def run_fourier(image_series_xyt, lung_mask, time_step, config):
         mask=lung_mask,
         prominence=0.3,
         phantom=config.phantom,
+        return_time_series=False,
     )
 
     masked_dc, vent_map, perf_map = mask_images(
@@ -393,6 +394,7 @@ def run_dmd(registered_volume, lung_mask, time_step, config):
         mask=lung_mask,
         dt=time_step,
         r=rank,
+        return_reconstruction=False,
     )
 
     # When analyzing a phantom, skip perfusion detection by passing perfRange=None
@@ -619,14 +621,14 @@ def vq_mapping_online(data, head, base_dir=None, config: PipelineConfig = Pipeli
             RuntimeWarning,
             stacklevel=2,
         )
-        v_map = np.zeros(result.lung_mask.shape, dtype=float)
+        v_map = np.zeros(result.lung_mask.shape, dtype=np.float32)
     if q_map is None:
         warnings.warn(
             "Perfusion output is unavailable; using an empty scanner channel.",
             RuntimeWarning,
             stacklevel=2,
         )
-        q_map = np.zeros(result.lung_mask.shape, dtype=float)
+        q_map = np.zeros(result.lung_mask.shape, dtype=np.float32)
 
     print("Checking shapes before stacking:", v_map.shape, q_map.shape)
 
@@ -641,11 +643,11 @@ def vq_mapping_online(data, head, base_dir=None, config: PipelineConfig = Pipeli
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--series", default="20250729_age13_1")
+    parser.add_argument("--series", default="Volunteer3")
     # parser.add_argument("--series", default="trufi_lung_VT400ml_Freq20")
     parser.add_argument("--segmentation-method", default="nnunet")
     parser.add_argument("--spectral-method", default="FD")
-    parser.add_argument("--plotting", default=True)
+    parser.add_argument("--plotting", default=False)
     parser.add_argument("--phantom", default=False)
     args = parser.parse_args()
     pipeline_config = PipelineConfig(

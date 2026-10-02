@@ -4,7 +4,14 @@ import scipy.linalg as linalg
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 
-def dynamic_mode_decomp(X, dt=1, r=1e32, nstacks=1, mask= None):
+def dynamic_mode_decomp(
+    X,
+    dt=1,
+    r=1e32,
+    nstacks=1,
+    mask=None,
+    return_reconstruction=True,
+):
     """
     Computes the Dynamic Mode Decomposition of data X.
 
@@ -17,6 +24,9 @@ def dynamic_mode_decomp(X, dt=1, r=1e32, nstacks=1, mask= None):
         Truncate to rank-r (default is large number, effectively no truncation).
     nstacks : int, optional
         Number of stacks of the raw data (default is 1).
+    return_reconstruction : bool, optional
+        Whether to build and return the full reconstructed data matrix.
+        Disable this when only the DMD modes and frequencies are needed.
 
     Returns:
     Phi : numpy.ndarray
@@ -94,13 +104,15 @@ def dynamic_mode_decomp(X, dt=1, r=1e32, nstacks=1, mask= None):
     x1 = X[:, 0]    # time = 0
     b = np.dot(linalg.pinv(Phi), x1)
     
-    t = np.arange(n1) * dt
-    time_dynamics = np.zeros((r, len(t)), dtype=complex)
+    Xdmd = None
+    if return_reconstruction:
+        t = np.arange(n1) * dt
+        time_dynamics = np.zeros((r, len(t)), dtype=complex)
 
-    for i in range(len(t)):
-        time_dynamics[:, i] = b * np.exp(omega*t[i])
+        for i in range(len(t)):
+            time_dynamics[:, i] = b * np.exp(omega*t[i])
 
-    Xdmd = np.dot(Phi, time_dynamics)
+        Xdmd = np.dot(Phi, time_dynamics)
 
     return Phi, omega, lambda_, b, freq, Xdmd, r
 

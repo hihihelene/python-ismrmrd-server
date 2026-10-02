@@ -190,7 +190,8 @@ def find_local_max(
 
 
 def fourier_decomp(time_series_volume, time_step, mask=None, prominence= None,
-                   vent_range=(0.1, 0.7), perf_range=(0.8, 2.0), phantom=False):
+                   vent_range=(0.1, 0.7), perf_range=(0.8, 2.0), phantom=False,
+                   return_time_series=True):
     """
     Performs Fourier Decomposition method on three-dimensional volume V (2D+time).
     
@@ -252,20 +253,20 @@ def fourier_decomp(time_series_volume, time_step, mask=None, prominence= None,
     fft_data = np.fft.fft(voxel_signals, axis=1)  # Fourier transform along time dimension
 
     def build_maps(current_pos, report_fraction=True):
-        vent_fft = np.zeros_like(voxel_signals, dtype=complex)
-        dc_fft = np.zeros_like(voxel_signals, dtype=complex)
-
         # DC
-        dc_fft[:, 0] = fft_data[:, 0]
-
-        dc_amplitude = np.sum(np.abs(dc_fft), axis=1)
+        dc_amplitude = np.abs(fft_data[:, 0])
         ventilation_amplitude = np.zeros_like(dc_amplitude)
-        ventilation_series_local = np.zeros_like(voxel_signals, dtype=float)
+        ventilation_series_local = None
+        perfusion_series_local = None
         if current_pos[0] is not None:
-            vent_fft[:, current_pos[0]:current_pos[1]] = \
-                fft_data[:, current_pos[0]:current_pos[1]]
+            vent_fft = fft_data[:, current_pos[0]:current_pos[1]]
             ventilation_amplitude = 2 * np.sum(np.abs(vent_fft), axis=1)
-            ventilation_series_local = np.abs(np.fft.ifft(vent_fft, axis=1))
+            if return_time_series:
+                filtered_fft = np.zeros_like(voxel_signals, dtype=complex)
+                filtered_fft[:, current_pos[0]:current_pos[1]] = vent_fft
+                ventilation_series_local = np.abs(
+                    np.fft.ifft(filtered_fft, axis=1)
+                )
 
         # Kjorstad normalization
         a = 2 * ventilation_amplitude
@@ -284,14 +285,15 @@ def fourier_decomp(time_series_volume, time_step, mask=None, prominence= None,
         # Perfusion (optional)
         if current_pos[2] is None:
             perfusion_amplitude = None
-            perfusion_series_local = None
         else:
-            perf_fft = np.zeros_like(voxel_signals, dtype=complex)
-            perf_fft[:, current_pos[2]:current_pos[3]] = \
-                fft_data[:, current_pos[2]:current_pos[3]]
-
+            perf_fft = fft_data[:, current_pos[2]:current_pos[3]]
             perfusion_amplitude = 2 * np.sum(np.abs(perf_fft), axis=1)
-            perfusion_series_local = np.abs(np.fft.ifft(perf_fft, axis=1))
+            if return_time_series:
+                filtered_fft = np.zeros_like(voxel_signals, dtype=complex)
+                filtered_fft[:, current_pos[2]:current_pos[3]] = perf_fft
+                perfusion_series_local = np.abs(
+                    np.fft.ifft(filtered_fft, axis=1)
+                )
 
         return ventilation_fraction, perfusion_amplitude, dc_amplitude, ventilation_series_local, perfusion_series_local
 
@@ -307,7 +309,8 @@ def fourier_decomp(time_series_volume, time_step, mask=None, prominence= None,
         else perfusion_amplitude.reshape(nx, ny)
     )
 
-    ventilation_series = ventilation_series.reshape(nx, ny, z)
+    if ventilation_series is not None:
+        ventilation_series = ventilation_series.reshape(nx, ny, z)
 
     if perfusion_series is not None:
         perfusion_series = perfusion_series.reshape(nx, ny, z)
@@ -354,11 +357,14 @@ def fourier_decomp(time_series_volume, time_step, mask=None, prominence= None,
                     report_fraction=False,
                 )
                 vent_image = ventilation_fraction.reshape([nx, ny])
-                ventilation_series = ventilation_series.reshape(nx, ny, z)
+                if ventilation_series is not None:
+                    ventilation_series = ventilation_series.reshape(nx, ny, z)
 
                 vent_image = np.array(vent_image, copy=True)
-                ventilation_series = np.array(ventilation_series, copy=True)
+                if ventilation_series is not None:
+                    ventilation_series = np.array(ventilation_series, copy=True)
                 vent_image[exclude_mask] = 0
-                ventilation_series[exclude_mask, :] = 0
+                if ventilation_series is not None:
+                    ventilation_series[exclude_mask, :] = 0
 
     return vent_image, perf_image, dc_image, ventilation_series, perfusion_series, vent_freq, perf_freq, spectrum_freq, spectrum_power

@@ -152,6 +152,7 @@ def plot_results(image, dc_image, ventMap, perfMap,
 
         # p95_filepath = os.path.join(dirpath if dirpath else '.', f"{config.spectral_method}_perfusion_p95.png")
         # fig_p95.savefig(p95_filepath, bbox_inches='tight')
+    plt.close(fig)
     
 
 
@@ -284,6 +285,9 @@ def plot_overlays(
         saved_perf_path = os.path.join(output_path,f"{config.spectral_method}_{perf_filename}") if perf_overlay is not None else None
         if not config.phantom:
             fig_p.savefig(saved_perf_path, dpi=dpi, bbox_inches='tight')
+    plt.close(fig_v)
+    if not config.phantom:
+        plt.close(fig_p)
 
 def plot_individual_modes(Phi, freq, lambda_, b, r,
                           sx=256, sy=256,
@@ -394,6 +398,7 @@ def plot_segmentation(mean2d_np, augmented_np, segmentation_method, output_path,
     plt.axis("off")
     plt.title(f"Segmentation: {segmentation_method}")
     plt.savefig(f"{output_path}/segmentation_{segmentation_method}_{series_indicator}.png", bbox_inches='tight')
+    plt.close()
 
 
 def plot_frequency_spectrum_FD(spectrum_freq, spectrum_power, vent_hz, perf_hz, output_path=None):
@@ -434,6 +439,7 @@ def plot_frequency_spectrum_FD(spectrum_freq, spectrum_power, vent_hz, perf_hz, 
     os.makedirs(output_path, exist_ok=True)
     out_file = os.path.join(output_path, 'frequency_spectrum.jpg')
     plt.savefig(out_file, bbox_inches='tight', dpi=200)
+    plt.close()
 
 def plot_modes_DMD(freq, b, vent_hz, perf_hz, output_path=None):
 
@@ -448,6 +454,7 @@ def plot_modes_DMD(freq, b, vent_hz, perf_hz, output_path=None):
     plt.ylabel('Amplitude', fontsize=12)
     plt.title('Mean-signal spectrum DMD')
     plt.savefig(os.path.join(output_path, 'dmd_modes.jpg'))
+    plt.close()
 
 
 def plot_registered_series(registered_series, output_path=None):
