@@ -3,7 +3,8 @@
     "parameters": {
         "options": "RGB",
         "sendOriginal": "True",
-        "segmentationmethod": "nnUnet",
+        "segmentationmethod": "nnunet",
+        "registrationmethod": "hypermorph",
         "spectralanalysis": "FD",
         "phantom": false,
         "skipfirst": 8

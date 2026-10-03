@@ -4,6 +4,7 @@
         "options": "RGB",
         "sendOriginal": "True",
         "segmentationmethod": "nnunet",
+        "registrationmethod": "hypermorph",
         "spectralanalysis": "FD",
         "phantom": false,
         "skipfirst": 8

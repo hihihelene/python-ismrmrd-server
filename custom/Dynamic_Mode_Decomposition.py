@@ -1,17 +1,10 @@
 import numpy as np
-from scipy.linalg import svd, eig
-import scipy.linalg as linalg
-import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
+from scipy import linalg
+from scipy.linalg import eig, svd
 
-def dynamic_mode_decomp(
-    X,
-    dt=1,
-    r=1e32,
-    nstacks=1,
-    mask=None,
-    return_reconstruction=True,
-):
+
+def dynamic_mode_decomp(X, dt=1, r=1e32, nstacks=1, mask=None):
     """
     Computes the Dynamic Mode Decomposition of data X.
 
@@ -24,9 +17,6 @@ def dynamic_mode_decomp(
         Truncate to rank-r (default is large number, effectively no truncation).
     nstacks : int, optional
         Number of stacks of the raw data (default is 1).
-    return_reconstruction : bool, optional
-        Whether to build and return the full reconstructed data matrix.
-        Disable this when only the DMD modes and frequencies are needed.
 
     Returns:
     Phi : numpy.ndarray
@@ -43,18 +33,20 @@ def dynamic_mode_decomp(
         The data matrix reconstructed by Phi, omega, b.
     r : int
         The rank used for truncation.
-    
+
     Adaptation of the codes: https://github.com/hanyoseob/python-DMD/blob/master/demo_DMD.py
                        and   https://github.com/EfeIlicak/DMD_Lung
     """
     if mask is not None:
-        flat_mask = mask.ravel()            # length = H*W
-        X = X[flat_mask, :]                 # now shape = (n_lung, T)
-        
+        flat_mask = mask.ravel()  # length = H*W
+        X = X[flat_mask, :]  # now shape = (n_lung, T)
+
     hermitian = lambda x: np.conj(np.transpose(x))
-    
+
     if nstacks > 1:
-        Xaug = np.hstack([X[:, st:X.shape[1] - nstacks + st] for st in range(nstacks)])
+        Xaug = np.hstack(
+            [X[:, st : X.shape[1] - nstacks + st] for st in range(nstacks)]
+        )
         X1 = Xaug[:, :-1]
         X2 = Xaug[:, 1:]
     else:
@@ -90,7 +82,7 @@ def dynamic_mode_decomp(
     D[:nA, :nA] = np.diag(Ddiag)
     print(f"Shape of W: {W.shape}")
     print(f"Shape of D: {D.shape}")
-    print(f'Shape of X2: {X2.shape}')
+    print(f"Shape of X2: {X2.shape}")
     Phi = np.dot(X2, np.dot(Vr, np.dot(np.linalg.inv(Sr), W)))
     print(f"Shape of Phi: {Phi.shape}")
 
@@ -101,18 +93,16 @@ def dynamic_mode_decomp(
     freq = np.angle(lambda_) / (2 * np.pi * dt)
 
     # Compute DMD mode amplitudes
-    x1 = X[:, 0]    # time = 0
+    x1 = X[:, 0]  # time = 0
     b = np.dot(linalg.pinv(Phi), x1)
-    
-    Xdmd = None
-    if return_reconstruction:
-        t = np.arange(n1) * dt
-        time_dynamics = np.zeros((r, len(t)), dtype=complex)
 
-        for i in range(len(t)):
-            time_dynamics[:, i] = b * np.exp(omega*t[i])
+    t = np.arange(n1) * dt
+    time_dynamics = np.zeros((r, len(t)), dtype=complex)
 
-        Xdmd = np.dot(Phi, time_dynamics)
+    for i in range(len(t)):
+        time_dynamics[:, i] = b * np.exp(omega * t[i])
+
+    Xdmd = np.dot(Phi, time_dynamics)
 
     return Phi, omega, lambda_, b, freq, Xdmd, r
 
@@ -128,24 +118,34 @@ def mean_step_size(array):
     float: The mean step size of the array.
     """
     if len(array) < 2:
-        raise ValueError("Array must contain at least two elements to calculate step size.")
-    
+        raise ValueError(
+            "Array must contain at least two elements to calculate step size."
+        )
+
     # Calculate the differences between consecutive elements
     differences = np.diff(array)
-    
+
     # Compute the mean of these differences
     mean_step = np.mean(differences)
-    
+
     return mean_step
 
-def process_DMD_modes(Phi, freq, lambda_, b, r,
-                      sx=256, sy=256,
-                      ventRange=[0.05, 0.35],
-                      perfRange=[0.75, 1.25],
-                      mask=None):
+
+def process_DMD_modes(
+    Phi,
+    freq,
+    lambda_,
+    b,
+    r,
+    sx=256,
+    sy=256,
+    ventRange=[0.05, 0.35],
+    perfRange=[0.75, 1.25],
+    mask=None,
+):
     """
     Process DMD modes to extract ventilation and perfusion maps.
-    
+
     Parameters:
     -----------
     Phi      : np.ndarray, shape = (n_pixels, r)
@@ -166,7 +166,7 @@ def process_DMD_modes(Phi, freq, lambda_, b, r,
         [min, max] frequency bounds for perfusion.
     mask     : None or np.ndarray(bool) shape = (sy, sx)
         If None, uses full image. Otherwise, mask==True are lung pixels.
-    
+
     Returns:
     --------
     dc_DMD   : np.ndarray, shape = (sy, sx)
@@ -176,63 +176,62 @@ def process_DMD_modes(Phi, freq, lambda_, b, r,
     # 1) Build the 3D stack of modes (sy × sx × r)
     if mask is None:
         # original full‐image behavior
-        res_DMD = Phi[:(sx*sy), :].reshape((sy, sx, r))
+        res_DMD = Phi[: (sx * sy), :].reshape((sy, sx, r))
     else:
         # masked: fill zeros outside ROI
-        flat_mask = mask.ravel()                # length = sx*sy
+        flat_mask = mask.ravel()  # length = sx*sy
         # allocate full plane
-        res_flat = np.zeros((sx*sy, r), dtype=Phi.dtype)
+        res_flat = np.zeros((sx * sy, r), dtype=Phi.dtype)
         # fill lung pixels
         res_flat[flat_mask, :] = Phi
         # reshape back to image
         res_DMD = res_flat.reshape((sy, sx, r))
-    
+
     # 2) find mode indices
     vent_idx = np.where((freq > ventRange[0]) & (freq < ventRange[1]))[0]
-    
+
     # Handle the case where perfRange is None (phantom mode):
     if perfRange is None:
         perf_idx = np.array([], dtype=int)
     else:
-        perf_idx = np.where((freq > perfRange[0]) & 
-                            (freq < perfRange[1])
-                            )[0]
+        perf_idx = np.where((freq > perfRange[0]) & (freq < perfRange[1]))[0]
 
-    print('ventilation frequencies:', freq[vent_idx]) 
+    print("ventilation frequencies:", freq[vent_idx])
 
     if perf_idx.size == 0:
-        print('perfusion frequencies: None')
+        print("perfusion frequencies: None")
     else:
-        print('perfusion frequencies:', freq[perf_idx])
-    dc_idx   = np.where(np.abs(freq) < 5e-4)[0]
-    
+        print("perfusion frequencies:", freq[perf_idx])
+    dc_idx = np.where(np.abs(freq) < 5e-4)[0]
 
     # 3) reconstruct images
-    dc_DMD   = reconstruct_freq_image(b/2, res_DMD, dc_idx)
-    vent_DMD = reconstruct_freq_image(b,   res_DMD, vent_idx)
+    dc_DMD = reconstruct_freq_image(b / 2, res_DMD, dc_idx)
+    vent_DMD = reconstruct_freq_image(b, res_DMD, vent_idx)
     # Perfusion map: if no perfusion indices (phantom mode), set zeros
     if perf_idx.size == 0:
         perf_DMD = np.zeros_like(dc_DMD)
     else:
-        perf_DMD = reconstruct_freq_image(b,   res_DMD, perf_idx)
-    
+        perf_DMD = reconstruct_freq_image(b, res_DMD, perf_idx)
+
     ## Commented out several changes to the maps
     # 4) compute ventilation map
-    #BGr     = dc_DMD[:30, :30]
-    #BG      = np.std(BGr)
-    #ventMap = np.abs(vent_DMD / ((vent_DMD/2) + dc_DMD - BG))
-    #ventMap = np.abs(vent_DMD / ((vent_DMD/2) + dc_DMD))
+    # BGr     = dc_DMD[:30, :30]
+    # BG      = np.std(BGr)
+    # ventMap = np.abs(vent_DMD / ((vent_DMD/2) + dc_DMD - BG))
+    # ventMap = np.abs(vent_DMD / ((vent_DMD/2) + dc_DMD))
     ventMap = vent_DMD
-    
+
     # 5) compute perfusion map
-    #perfp        = np.percentile(perf_DMD, 99)
-    #perf_DMD[perf_DMD > perfp] = perfp
-    #perfMap      = perf_DMD / perfp
+    # perfp        = np.percentile(perf_DMD, 99)
+    # perf_DMD[perf_DMD > perfp] = perfp
+    # perfMap      = perf_DMD / perfp
     perfMap = perf_DMD
     # Exclude the top 95th percentile of perfusion pixels from the ventilation map
     try:
         if mask is not None:
-            segmented_mask = np.asarray(mask, dtype=bool) & np.isfinite(perfMap) & (perfMap > 0)
+            segmented_mask = (
+                np.asarray(mask, dtype=bool) & np.isfinite(perfMap) & (perfMap > 0)
+            )
         else:
             segmented_mask = np.isfinite(perfMap) & (perfMap > 0)
 
@@ -247,25 +246,18 @@ def process_DMD_modes(Phi, freq, lambda_, b, r,
 
     # casting maps to original shape
 
-
     return dc_DMD, ventMap, perfMap
-    
+
+
 def mask_images(mask_bool, dc_image, vent_image, perf_image, background_value=0):
 
     # Create masked images with NaN for the mask
     masked_dc = np.where(mask_bool, dc_image, background_value)
-    masked_vent = (
-        None
-        if vent_image is None
-        else np.where(mask_bool, vent_image, background_value)
-    )
-    masked_perf = (
-        None
-        if perf_image is None
-        else np.where(mask_bool, perf_image, background_value)
-    )
+    masked_vent = np.where(mask_bool, vent_image, background_value)
+    masked_perf = np.where(mask_bool, perf_image, background_value)
 
     return masked_dc, masked_vent, masked_perf
+
 
 def reconstruct_freq_image(b, res, indices):
     """
@@ -286,10 +278,11 @@ def reconstruct_freq_image(b, res, indices):
 
     return np.abs(np.sum(res[:, :, indices] * b[indices], axis=2))
 
+
 def create_rgb_overlay(
     anatomical_image,
     Map,
-    map_type: str = 'ventilation',
+    map_type: str = "ventilation",
     map_range=None,
     phantom_range=None,
     alpha: float = 0.5,
@@ -323,6 +316,7 @@ def create_rgb_overlay(
     rgb : np.ndarray, shape (H, W, 3)
         RGB image in float [0,1].
     """
+
     # local helper: compute ranges safely
     def _safe_range(data, given, default_vmin=0.0):
         if given is not None:
@@ -344,16 +338,25 @@ def create_rgb_overlay(
         return vmin, vmax
 
     # choose colormap
-    style = (map_type or 'ventilation').lower()
-    ocean_cmap = LinearSegmentedColormap.from_list('ocean', [
-        '#000000','#000080', '#0000cd', '#1e90ff', '#00bfff', '#87ceeb',
-        '#e0ffff','#ffffff'
-    ])
-    blackbody_cmap = LinearSegmentedColormap.from_list('blackbody', [
-        '#000000','#550000', '#dd0000', '#ff8000', '#ffff80', '#ffffff'
-    ])
+    style = (map_type or "ventilation").lower()
+    ocean_cmap = LinearSegmentedColormap.from_list(
+        "ocean",
+        [
+            "#000000",
+            "#000080",
+            "#0000cd",
+            "#1e90ff",
+            "#00bfff",
+            "#87ceeb",
+            "#e0ffff",
+            "#ffffff",
+        ],
+    )
+    blackbody_cmap = LinearSegmentedColormap.from_list(
+        "blackbody", ["#000000", "#550000", "#dd0000", "#ff8000", "#ffff80", "#ffffff"]
+    )
 
-    if style in ('perfusion', 'perf', 'red'):
+    if style in ("perfusion", "perf", "red"):
         cmap = blackbody_cmap
     else:
         cmap = ocean_cmap

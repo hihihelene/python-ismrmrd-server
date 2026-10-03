@@ -1,19 +1,31 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
 import os
-import imageio
-import itk
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.colors import LinearSegmentedColormap
+
 
 def plot_image(ax, data, cmap, title, vmin=None, vmax=None):
     ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax)
     ax.set_title(title)
-    ax.axis('off')
-    plt.colorbar(ax.images[0], ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
+    ax.axis("off")
+    plt.colorbar(ax.images[0], ax=ax, orientation="vertical", fraction=0.046, pad=0.04)
 
-def plot_results(image, dc_image, ventMap, perfMap,
-                 ventMap_range=None, perfMap_range=None, output_path=None,
-                 vent_freqs=None, perf_freqs=None, show_freq_text=True, max_list_items=6, config=None):  
+
+def plot_results(
+    image,
+    dc_image,
+    ventMap,
+    perfMap,
+    ventMap_range=None,
+    perfMap_range=None,
+    output_path=None,
+    vent_freqs=None,
+    perf_freqs=None,
+    show_freq_text=True,
+    max_list_items=6,
+    config=None,
+):
     """
     Displays images for any spectral decomposition technique.
 
@@ -24,13 +36,22 @@ def plot_results(image, dc_image, ventMap, perfMap,
         2D arrays representing ventilation and perfusion maps.
     technique: str ('DMD' or 'FD'), (other options may be added later)
     """
-    ocean_cmap = LinearSegmentedColormap.from_list('ocean', [
-        '#000000','#000080', '#0000cd', '#1e90ff', '#00bfff', '#87ceeb',
-        '#e0ffff','#ffffff'
-    ])
-    blackbody_cmap = LinearSegmentedColormap.from_list('blackbody', [
-        '#000000','#550000', '#dd0000', '#ff8000', '#ffff80', '#ffffff'
-    ])
+    ocean_cmap = LinearSegmentedColormap.from_list(
+        "ocean",
+        [
+            "#000000",
+            "#000080",
+            "#0000cd",
+            "#1e90ff",
+            "#00bfff",
+            "#87ceeb",
+            "#e0ffff",
+            "#ffffff",
+        ],
+    )
+    blackbody_cmap = LinearSegmentedColormap.from_list(
+        "blackbody", ["#000000", "#550000", "#dd0000", "#ff8000", "#ffff80", "#ffffff"]
+    )
 
     def normalize_image(image, upper_percentile=None):
         """Normalize image to 0-1 range with optional upper percentile clipping."""
@@ -57,7 +78,9 @@ def plot_results(image, dc_image, ventMap, perfMap,
     image_norm = normalize_image(image)
     dc_image_norm = normalize_image(dc_image)
     ventMap_norm = np.asarray(ventMap, dtype=float)
-    perfMap_norm = normalize_image(perfMap, upper_percentile=99) if perfMap is not None else None
+    perfMap_norm = (
+        normalize_image(perfMap, upper_percentile=99) if perfMap is not None else None
+    )
 
     # # Compute P95 only in segmented tissue and ignore background.
     # segmented_mask = np.isfinite(perfMap_norm) & (np.asarray(perfMap) > 0) if perfMap is not None else None
@@ -65,14 +88,13 @@ def plot_results(image, dc_image, ventMap, perfMap,
 
     fig, axs = plt.subplots(2, 2, figsize=(10, 8))
 
-
     def _fmt_freqs(arr, max_items=6):
         if arr is None or len(arr) == 0:
             return "none"
         arr = np.asarray(arr)
         shown = ", ".join(f"{v:.3f}" for v in arr[:max_items])
         if len(arr) > max_items:
-            shown += f", +{len(arr)-max_items} more"
+            shown += f", +{len(arr) - max_items} more"
         return shown
 
     # ranges
@@ -80,36 +102,50 @@ def plot_results(image, dc_image, ventMap, perfMap,
     vmin_perf, vmax_perf = (0, 1) if perfMap_range is None else perfMap_range
 
     # plots
-    vent_title = 'Fractional Ventilation [ml/ml]' + '\n Technique:' + config.spectral_method 
-    perf_title = 'Perfusion [normalized]' + '\n Technique:' + config.spectral_method
+    vent_title = (
+        "Fractional Ventilation [ml/ml]" + "\n Technique:" + config.spectral_method
+    )
+    perf_title = "Perfusion [normalized]" + "\n Technique:" + config.spectral_method
 
-    plot_image(axs[0, 0], image_norm, 'gray', 'Phantom [a.u.]',
-               0, 1)
-    plot_image(axs[0, 1], dc_image_norm, 'gray', 'DC Component [a.u.]',
-               0, 1)
-    plot_image(axs[1, 0], ventMap_norm, ocean_cmap, vent_title,
-               vmin_vent, vmax_vent)
-    
-    plot_image(axs[1, 1], perfMap_norm, blackbody_cmap, perf_title,
-               vmin_perf, vmax_perf) if config.phantom is False else axs[1, 1].set(visible=False)
+    plot_image(axs[0, 0], image_norm, "gray", "Phantom [a.u.]", 0, 1)
+    plot_image(axs[0, 1], dc_image_norm, "gray", "DC Component [a.u.]", 0, 1)
+    plot_image(axs[1, 0], ventMap_norm, ocean_cmap, vent_title, vmin_vent, vmax_vent)
+
+    plot_image(
+        axs[1, 1], perfMap_norm, blackbody_cmap, perf_title, vmin_perf, vmax_perf
+    ) if config.phantom is False else axs[1, 1].set(visible=False)
 
     # annotate frequencies directly on the vent/perf maps ---
-    if show_freq_text and config.spectral_method == 'DMD':
+    if show_freq_text and config.spectral_method == "DMD":
         vent_text = f"Vent freqs (Hz): {_fmt_freqs(vent_freqs, max_list_items)}"
-        perf_text = f"Perf freqs (Hz): {_fmt_freqs(perf_freqs, max_list_items)}" if perf_freqs is not None else "Perf freqs (Hz): none"
+        perf_text = (
+            f"Perf freqs (Hz): {_fmt_freqs(perf_freqs, max_list_items)}"
+            if perf_freqs is not None
+            else "Perf freqs (Hz): none"
+        )
 
         # top-left corner inside each axes
         axs[1, 0].text(
-            0.02, 0.02, vent_text,
-            transform=axs[1, 0].transAxes, ha='left', va='bottom', fontsize=9,
-            bbox=dict(facecolor='white', alpha=0.75, edgecolor='none', pad=3)
+            0.02,
+            0.02,
+            vent_text,
+            transform=axs[1, 0].transAxes,
+            ha="left",
+            va="bottom",
+            fontsize=9,
+            bbox=dict(facecolor="white", alpha=0.75, edgecolor="none", pad=3),
         )
 
         if config.phantom is False:
             axs[1, 1].text(
-                0.02, 0.02, perf_text,
-                transform=axs[1, 1].transAxes, ha='left', va='bottom', fontsize=9,
-                bbox=dict(facecolor='white', alpha=0.75, edgecolor='none', pad=3)
+                0.02,
+                0.02,
+                perf_text,
+                transform=axs[1, 1].transAxes,
+                ha="left",
+                va="bottom",
+                fontsize=9,
+                bbox=dict(facecolor="white", alpha=0.75, edgecolor="none", pad=3),
             )
         else:
             axs[1, 1].set(visible=False)
@@ -139,21 +175,19 @@ def plot_results(image, dc_image, ventMap, perfMap,
 
     # fig.tight_layout()
     # fig_p95.tight_layout()
-    
+
     if output_path:
-        if config.spectral_method == 'FD':
-            output_path  = os.path.join(output_path, 'FD.png')
-        elif config.spectral_method == 'DMD':
-            output_path = os.path.join(output_path, 'DMD.png')
+        if config.spectral_method == "FD":
+            output_path = os.path.join(output_path, "FD.png")
+        elif config.spectral_method == "DMD":
+            output_path = os.path.join(output_path, "DMD.png")
         dirpath = os.path.dirname(output_path)
         if dirpath and not os.path.exists(dirpath):
             os.makedirs(dirpath, exist_ok=True)
-        fig.savefig(output_path, bbox_inches='tight')
+        fig.savefig(output_path, bbox_inches="tight")
 
         # p95_filepath = os.path.join(dirpath if dirpath else '.', f"{config.spectral_method}_perfusion_p95.png")
         # fig_p95.savefig(p95_filepath, bbox_inches='tight')
-    plt.close(fig)
-    
 
 
 def reconstruct_freq_image(b, res, indices):
@@ -175,6 +209,7 @@ def reconstruct_freq_image(b, res, indices):
 
     return np.abs(np.sum(res[:, :, indices] * b[indices], axis=2))
 
+
 def plot_overlays(
     phantom_image,
     ventMap,
@@ -190,7 +225,7 @@ def plot_overlays(
     perf_filename: str = "overlay_perfusion.png",
     dpi: int = 300,
     show: bool = False,
-    config: object = None
+    config: object = None,
 ):
     """
     Create two figures:
@@ -213,13 +248,22 @@ def plot_overlays(
         (vent_path or None, perf_path or None)
     """
     # Colormaps (same style as your function)
-    ocean_cmap = LinearSegmentedColormap.from_list('ocean', [
-        '#000000','#000080', '#0000cd', '#1e90ff', '#00bfff', '#87ceeb',
-        '#e0ffff','#ffffff'
-    ])
-    blackbody_cmap = LinearSegmentedColormap.from_list('blackbody', [
-        '#000000','#550000', '#dd0000', '#ff8000', '#ffff80', '#ffffff'
-    ])
+    ocean_cmap = LinearSegmentedColormap.from_list(
+        "ocean",
+        [
+            "#000000",
+            "#000080",
+            "#0000cd",
+            "#1e90ff",
+            "#00bfff",
+            "#87ceeb",
+            "#e0ffff",
+            "#ffffff",
+        ],
+    )
+    blackbody_cmap = LinearSegmentedColormap.from_list(
+        "blackbody", ["#000000", "#550000", "#dd0000", "#ff8000", "#ffff80", "#ffffff"]
+    )
 
     def _safe_range(data, given):
         if given is not None:
@@ -242,59 +286,85 @@ def plot_overlays(
     # Prepare masked overlays (NaNs won't render, revealing background)
     vent_overlay = np.where(mask, ventMap, np.nan) if mask is not None else ventMap
     if perfMap is not None:
-        perf_overlay = np.where(mask, perfMap, np.nan) if mask is not None else perfMap if perfMap is not None else None
+        perf_overlay = (
+            np.where(mask, perfMap, np.nan)
+            if mask is not None
+            else perfMap
+            if perfMap is not None
+            else None
+        )
     else:
         perf_overlay = None
 
     pvmin, pvmax = _phantom_range(phantom_image, phantom_range)
     vvmin, vvmax = _safe_range(vent_overlay, vent_range)
-    qvmin, qvmax = _safe_range(perf_overlay, perf_range) if not config.phantom else (None, None)
+    qvmin, qvmax = (
+        _safe_range(perf_overlay, perf_range) if not config.phantom else (None, None)
+    )
 
     saved_vent_path, saved_perf_path = None, None
 
-    print('Checking image sizes:')
-    print(f'Phantom image: {phantom_image.shape}')
-    print(f'Ventilation map: {vent_overlay.shape}')
+    print("Checking image sizes:")
+    print(f"Phantom image: {phantom_image.shape}")
+    print(f"Ventilation map: {vent_overlay.shape}")
     if perf_overlay is not None:
-        print(f'Perfusion map: {perf_overlay.shape}')
+        print(f"Perfusion map: {perf_overlay.shape}")
     # --- Ventilation overlay ---
     fig_v, ax_v = plt.subplots(1, 1, figsize=(6, 6))
-    ax_v.imshow(phantom_image, cmap='gray', vmin=pvmin, vmax=pvmax)
-    im_v = ax_v.imshow(vent_overlay, cmap=ocean_cmap, vmin=vvmin, vmax=vvmax, alpha=vent_alpha)
-    ax_v.set_title('Ventilation overlay')
-    ax_v.axis('off')
-    cb_v = plt.colorbar(im_v, ax=ax_v, orientation='vertical', fraction=0.046, pad=0.04)
-    cb_v.set_label('Fractional Ventilation [ml/ml]')
+    ax_v.imshow(phantom_image, cmap="gray", vmin=pvmin, vmax=pvmax)
+    im_v = ax_v.imshow(
+        vent_overlay, cmap=ocean_cmap, vmin=vvmin, vmax=vvmax, alpha=vent_alpha
+    )
+    ax_v.set_title("Ventilation overlay")
+    ax_v.axis("off")
+    cb_v = plt.colorbar(im_v, ax=ax_v, orientation="vertical", fraction=0.046, pad=0.04)
+    cb_v.set_label("Fractional Ventilation [ml/ml]")
     plt.tight_layout()
 
     # --- Perfusion overlay ---
     if not config.phantom:
         fig_p, ax_p = plt.subplots(1, 1, figsize=(6, 6))
-        ax_p.imshow(phantom_image, cmap='gray', vmin=pvmin, vmax=pvmax)
-        im_p = ax_p.imshow(perf_overlay, cmap=blackbody_cmap, vmin=qvmin, vmax=qvmax, alpha=perf_alpha)
-        ax_p.set_title('Perfusion overlay')
-        ax_p.axis('off')
-        cb_p = plt.colorbar(im_p, ax=ax_p, orientation='vertical', fraction=0.046, pad=0.04)
-        cb_p.set_label('Perfusion [normalized]')
+        ax_p.imshow(phantom_image, cmap="gray", vmin=pvmin, vmax=pvmax)
+        im_p = ax_p.imshow(
+            perf_overlay, cmap=blackbody_cmap, vmin=qvmin, vmax=qvmax, alpha=perf_alpha
+        )
+        ax_p.set_title("Perfusion overlay")
+        ax_p.axis("off")
+        cb_p = plt.colorbar(
+            im_p, ax=ax_p, orientation="vertical", fraction=0.046, pad=0.04
+        )
+        cb_p.set_label("Perfusion [normalized]")
         plt.tight_layout()
 
     if output_path:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        saved_vent_path = os.path.join(output_path, f"{config.spectral_method}_{vent_filename}")
-        fig_v.savefig(saved_vent_path, dpi=dpi, bbox_inches='tight')
-        saved_perf_path = os.path.join(output_path,f"{config.spectral_method}_{perf_filename}") if perf_overlay is not None else None
+        saved_vent_path = os.path.join(
+            output_path, f"{config.spectral_method}_{vent_filename}"
+        )
+        fig_v.savefig(saved_vent_path, dpi=dpi, bbox_inches="tight")
+        saved_perf_path = (
+            os.path.join(output_path, f"{config.spectral_method}_{perf_filename}")
+            if perf_overlay is not None
+            else None
+        )
         if not config.phantom:
-            fig_p.savefig(saved_perf_path, dpi=dpi, bbox_inches='tight')
-    plt.close(fig_v)
-    if not config.phantom:
-        plt.close(fig_p)
+            fig_p.savefig(saved_perf_path, dpi=dpi, bbox_inches="tight")
 
-def plot_individual_modes(Phi, freq, lambda_, b, r,
-                          sx=256, sy=256,
-                          mode_range=None, freq_range=None,
-                          mask=None,
-                          output_path="mode_plots",
-                          freq_tol=5e-4):
+
+def plot_individual_modes(
+    Phi,
+    freq,
+    lambda_,
+    b,
+    r,
+    sx=256,
+    sy=256,
+    mode_range=None,
+    freq_range=None,
+    mask=None,
+    output_path="mode_plots",
+    freq_tol=5e-4,
+):
     """
     Plot the DC component followed by each DMD mode as individual images,
     only using one side of each positive/negative frequency pair,
@@ -332,9 +402,8 @@ def plot_individual_modes(Phi, freq, lambda_, b, r,
     os.makedirs(output_path, exist_ok=True)
 
     # Build the 3D stack of modes (sy × sx × r)
-    # Build the 3D stack of modes (sy × sx × r)
     if mask is None:
-        res_DMD = Phi[:sx*sy, :].reshape((sy, sx, r))
+        res_DMD = Phi[: sx * sy, :].reshape((sy, sx, r))
     else:
         flat_mask = mask.ravel()
         # Initialisiere das vollständige Bild-Array mit Nullen für alle Pixel (H*W, r)
@@ -346,14 +415,14 @@ def plot_individual_modes(Phi, freq, lambda_, b, r,
 
     # Compute DC image and plot it first
     dc_idx = np.where(np.abs(freq) < freq_tol)[0]
-    dc_DMD = reconstruct_freq_image(b/2, res_DMD, dc_idx)
+    dc_DMD = reconstruct_freq_image(b / 2, res_DMD, dc_idx)
     plt.figure(figsize=(6, 6))
-    plt.imshow(dc_DMD, cmap='gray')
+    plt.imshow(dc_DMD, cmap="gray")
     plt.title("DC Component")
-    plt.axis('off')
+    plt.axis("off")
     cbar = plt.colorbar(fraction=0.046, pad=0.04)
-    cbar.set_label('Intensity')
-    plt.savefig(os.path.join(output_path, "001_dc_component.png"), bbox_inches='tight')
+    cbar.set_label("Intensity")
+    plt.savefig(os.path.join(output_path, "001_dc_component.png"), bbox_inches="tight")
     plt.close()
 
     # Determine which mode indices to plot (exclude DC)
@@ -375,20 +444,28 @@ def plot_individual_modes(Phi, freq, lambda_, b, r,
     for count, idx in enumerate(sorted_indices, start=2):
         img = np.abs(res_DMD[:, :, idx] * b[idx])
         plt.figure(figsize=(6, 6))
-        plt.imshow(img, cmap='gray')
-        plt.title(f"freq = {freq[idx]:.3f} Hz | lambda = {np.abs(lambda_[idx]):.3f} | amplitude = {np.abs(b[idx]):.3f}")
-        plt.axis('off')
+        plt.imshow(img, cmap="gray")
+        plt.title(
+            f"freq = {freq[idx]:.3f} Hz | lambda = {np.abs(lambda_[idx]):.3f} | amplitude = {np.abs(b[idx]):.3f}"
+        )
+        plt.axis("off")
         cbar = plt.colorbar(fraction=0.046, pad=0.04)
-        cbar.set_label('Intensity')
-        filename = os.path.join(output_path, f"DMD_individual_mode_{count:03d}_component.png")
-        plt.savefig(filename, bbox_inches='tight')
+        cbar.set_label("Intensity")
+        filename = os.path.join(
+            output_path, f"DMD_individual_mode_{count:03d}_component.png"
+        )
+        plt.savefig(filename, bbox_inches="tight")
         plt.close()
 
-    print(f"Saved {1 + len(sorted_indices)} images (DC + modes) sorted by frequency to '{output_path}'")
+    print(
+        f"Saved {1 + len(sorted_indices)} images (DC + modes) sorted by frequency to '{output_path}'"
+    )
 
 
-def plot_segmentation(mean2d_np, augmented_np, segmentation_method, output_path, series_indicator):
-    """ 
+def plot_segmentation(
+    mean2d_np, augmented_np, segmentation_method, output_path, series_indicator
+):
+    """
     Plot the mean 2D image with the segmentation overlay and save the figure.
     """
 
@@ -397,36 +474,47 @@ def plot_segmentation(mean2d_np, augmented_np, segmentation_method, output_path,
     plt.contour(augmented_np, levels=[0.5], colors="r")
     plt.axis("off")
     plt.title(f"Segmentation: {segmentation_method}")
-    plt.savefig(f"{output_path}/segmentation_{segmentation_method}_{series_indicator}.png", bbox_inches='tight')
-    plt.close()
+    plt.savefig(
+        f"{output_path}/segmentation_{segmentation_method}_{series_indicator}.png",
+        bbox_inches="tight",
+    )
 
 
-def plot_frequency_spectrum_FD(spectrum_freq, spectrum_power, vent_hz, perf_hz, output_path=None):
+def plot_frequency_spectrum_FD(
+    spectrum_freq, spectrum_power, vent_hz, perf_hz, output_path=None
+):
     # mark peaks
     # find the nearest frequency bins for markers
     def nearest_bin(f):
         return int(np.argmin(np.abs(spectrum_freq - f)))
-    
 
     vbin = nearest_bin(vent_hz)
 
     plt.figure(figsize=(6, 4))
     plt.plot(spectrum_freq, spectrum_power, linewidth=2)
-    plt.xlabel('Frequency (Hz)', fontsize=12)
-    plt.ylabel('Power', fontsize=12)
-    plt.title('Mean-signal power spectrum')
+    plt.xlabel("Frequency (Hz)", fontsize=12)
+    plt.ylabel("Power", fontsize=12)
+    plt.title("Mean-signal power spectrum")
     plt.scatter([spectrum_freq[vbin]], [spectrum_power[vbin]])
-    plt.axvline(spectrum_freq[vbin], linestyle='--', alpha=0.7)
-    plt.annotate(f'Vent {vent_hz:.2f} Hz', (spectrum_freq[vbin], spectrum_power[vbin]),
-                textcoords='offset points', xytext=(8, 8))
+    plt.axvline(spectrum_freq[vbin], linestyle="--", alpha=0.7)
+    plt.annotate(
+        f"Vent {vent_hz:.2f} Hz",
+        (spectrum_freq[vbin], spectrum_power[vbin]),
+        textcoords="offset points",
+        xytext=(8, 8),
+    )
 
     # Plot perfusion marker only if available
     if perf_hz is not None:
         pbin = nearest_bin(perf_hz)
         plt.scatter([spectrum_freq[pbin]], [spectrum_power[pbin]])
-        plt.axvline(spectrum_freq[pbin], linestyle='--', alpha=0.7)
-        plt.annotate(f'Perf {perf_hz:.2f} Hz', (spectrum_freq[pbin], spectrum_power[pbin]),
-                    textcoords='offset points', xytext=(8, 8))
+        plt.axvline(spectrum_freq[pbin], linestyle="--", alpha=0.7)
+        plt.annotate(
+            f"Perf {perf_hz:.2f} Hz",
+            (spectrum_freq[pbin], spectrum_power[pbin]),
+            textcoords="offset points",
+            xytext=(8, 8),
+        )
 
     plt.xlim(0, spectrum_freq.max())
     # Protect against zero-height y-limits which can produce a blank/empty-looking figure
@@ -437,9 +525,9 @@ def plot_frequency_spectrum_FD(spectrum_freq, spectrum_power, vent_hz, perf_hz, 
     plt.ylim(0, ymax * 1.1)
     plt.tight_layout()
     os.makedirs(output_path, exist_ok=True)
-    out_file = os.path.join(output_path, 'frequency_spectrum.jpg')
-    plt.savefig(out_file, bbox_inches='tight', dpi=200)
-    plt.close()
+    out_file = os.path.join(output_path, "frequency_spectrum.jpg")
+    plt.savefig(out_file, bbox_inches="tight", dpi=200)
+
 
 def plot_modes_DMD(freq, b, vent_hz, perf_hz, output_path=None):
 
@@ -450,40 +538,7 @@ def plot_modes_DMD(freq, b, vent_hz, perf_hz, output_path=None):
     plt.scatter(freq_filt, np.abs(b_filt), linewidth=2)
     plt.xlim(0, freq_filt.max() * 1.1)
     plt.ylim(0, np.abs(b_filt).max() * 1.1)
-    plt.xlabel('Frequency (Hz)', fontsize=12)
-    plt.ylabel('Amplitude', fontsize=12)
-    plt.title('Mean-signal spectrum DMD')
-    plt.savefig(os.path.join(output_path, 'dmd_modes.jpg'))
-    plt.close()
-
-
-def plot_registered_series(registered_series, output_path=None):
-    """
-    Plot the registered series for visual inspection as a GIF.
-
-    Parameters:
-    -----------
-    registered_series : itk.Image
-        The registered image series.
-    output_path : str, optional
-        Path to save the figure. If None, the figure will not be saved.
-
-    Returns:
-    --------
-    None
-    """
-
-
-    # Convert the registered series to a numpy array
-    registered_array = registered_series  # (z, y, x)
-    print(f"Registered series shape: {registered_array.shape}")
-    print(f"Registered series dtype: {registered_array.dtype}")
-
-    # Create a GIF from the registered series
-    gif_path = os.path.join(output_path, 'registered_series.gif') if output_path else None
-    with imageio.get_writer(gif_path, mode='I', duration=0.5) as writer:
-        for i in range(registered_array.shape[0]):
-            frame = registered_array[i, :, :]
-            writer.append_data((frame / np.max(frame) * 255).astype(np.uint8))
-
-    print(f"Registered series GIF saved at: {gif_path}")
+    plt.xlabel("Frequency (Hz)", fontsize=12)
+    plt.ylabel("Amplitude", fontsize=12)
+    plt.title("Mean-signal spectrum DMD")
+    plt.savefig(os.path.join(output_path, "dmd_modes.jpg"))

@@ -24,13 +24,14 @@ import mrdhelper
 import constants
 from time import perf_counter
 
+
 try:
-    # this line currently fails on the scanner but should be entered and work theoretically
     from VQMapping import vq_mapping_online
-    logging.info("Successfully imported VQMapping_online from VQMapping.py (no additional custom folder entered)")
+    logging.info("Successfully imported VQMapping_online from VQMapping.py")
 except ImportError:
     logging.info("Failed to import VQMapping_online from VQMapping.py (no additional custom folder entered), trying to import from custom folder")
     from .VQMapping import vq_mapping_online
+    logging.info("Successfully imported VQMapping_online from custom/VQMapping.py")
 
 
 # introducing data class to configure pipeline parameters
@@ -43,6 +44,20 @@ class PipelineConfig:
     phantom: bool = False
     plotting: bool = False
     output_path: str | None = None
+    device: str = "cpu"
+    registration_method: str = "bspline"
+    # Path to the pre-trained VoxelMorph model
+    voxelmorph_checkpoint: str = r"models/Voxel_Hyper_Morph_Modelle/Voxelmorph/best.pt"
+    # Training config (YAML/JSON) belonging to voxelmorph_checkpoint. Read
+    # directly by VoxelMorphRegistration for the network architecture
+    voxelmorph_config: str = r"models/Voxel_Hyper_Morph_Modelle/Voxelmorph/config.yaml"
+    hypermorph_checkpoint: str = r"models/Voxel_Hyper_Morph_Modelle/Hypermorph/best.pt"
+    hypermorph_config: str = r"models/Voxel_Hyper_Morph_Modelle/Hypermorph/config.yaml"
+    # Fixed HyperMorph hyperparameters, passed directly to register().
+    # HyperMorph does not search for an optimal pair internally, so
+    # these values must be chosen manually.
+    hypermorph_lambda: float = 0.431945
+    hypermorph_gamma: float = 0.291229
 
 
 # Folder for debug output files
@@ -356,6 +371,7 @@ def process_image(imgGroup, connection, config, mrdHeader):
     PipelineConfig.segmentation_method = mrdhelper.get_json_config_param(config, 'segmentationmethod')
     PipelineConfig.skip_first = int(mrdhelper.get_json_config_param(config, 'skipfirst'))
     PipelineConfig.phantom =mrdhelper.get_json_config_param(config, 'phantom', type='bool')
+    PipelineConfig.registration_method = mrdhelper.get_json_config_param(config, 'registrationmethod')
 
     VQMaps = vq_mapping_online(data, head, None, PipelineConfig)
     print('VQMaps shape:', VQMaps.shape)
